@@ -177,3 +177,7 @@ var SPLIT_TAG = "<w:pageBreakBefore w:val=\"0\"/>";
 var inputFile = "./templates/Brochure.docx";
 extractFirstDoc(inputFile, "main.docx", SPLIT_TAG);
 extractRemainingDoc(inputFile, "content.docx", SPLIT_TAG);
+module.exports = {
+    extractFirstDoc: extractFirstDoc,
+    extractRemainingDoc: extractRemainingDoc,
+};

@@ -115,7 +115,6 @@ function mergeDocx(_a) {
     var baseDocxPath = _a.baseDocxPath, appendDocxPath = _a.appendDocxPath, outputPath = _a.outputPath;
     var baseZip = loadDocx(baseDocxPath);
     var appendZip = loadDocx(appendDocxPath);
-    /* Copy global definitions */
     [
         "word/styles.xml",
         "word/numbering.xml",
@@ -128,10 +127,8 @@ function mergeDocx(_a) {
     ensureFolder(baseZip, "word/media");
     var baseDocXml = parseXml(baseZip, "word/document.xml");
     var appendDocXml = parseXml(appendZip, "word/document.xml");
-    var baseElement = select("//w:body", baseDocXml);
-    var bodyElement = select("//w:body", appendDocXml);
-    var baseBody = baseElement ? baseElement[0] : {};
-    var appendBody = bodyElement ? bodyElement[0] : {};
+    var baseBody = select("//w:body", baseDocXml)[0];
+    var appendBody = select("//w:body", appendDocXml)[0];
     var relsPath = "word/_rels/document.xml.rels";
     var relsXml = parseXml(baseZip, relsPath);
     var imageCounter = 0;

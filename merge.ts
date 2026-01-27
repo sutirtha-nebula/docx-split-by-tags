@@ -3,10 +3,9 @@ import PizZip from "pizzip";
 import { DOMParser, XMLSerializer } from "xmldom";
 import * as xpath from "xpath";
 
-
-
-
 /* ===================== TYPES ===================== */
+
+type Zip = InstanceType<typeof PizZip>;
 
 interface MergeDocxOptions {
     baseDocxPath: string;
@@ -36,22 +35,22 @@ const select: any = xpath.useNamespaces(NS);
 
 /* ===================== ZIP / XML HELPERS ===================== */
 
-function loadDocx(path: string): PizZip {
+function loadDocx(path: string): Zip {
     return new PizZip(fs.readFileSync(path));
 }
 
-function parseXml(zip: PizZip, path: string): Document {
+function parseXml(zip: Zip, path: string): Document {
     return new DOMParser().parseFromString(
         zip.file(path)!.asText(),
         "text/xml"
     );
 }
 
-function writeXml(zip: PizZip, path: string, xml: Document): void {
+function writeXml(zip: Zip, path: string, xml: Document): void {
     zip.file(path, new XMLSerializer().serializeToString(xml));
 }
 
-function ensureFolder(zip: PizZip, folder: string): void {
+function ensureFolder(zip: Zip, folder: string): void {
     if (!zip.files[folder]) {
         zip.file(`${folder}/.placeholder`, "");
     }
@@ -59,14 +58,14 @@ function ensureFolder(zip: PizZip, folder: string): void {
 
 /* ===================== RELATIONSHIP HELPERS ===================== */
 
-function findAllRelationshipFiles(zip: PizZip): string[] {
+function findAllRelationshipFiles(zip: Zip): string[] {
     return Object.keys(zip.files).filter(
         f => f.includes("_rels") && f.endsWith(".rels")
     );
 }
 
 function findRelationship(
-    zip: PizZip,
+    zip: Zip,
     relId: string
 ): { target: string; type: string } | null {
     for (const relsPath of findAllRelationshipFiles(zip)) {
@@ -106,8 +105,8 @@ function getNextRelId(relsXml: Document): string {
 /* ===================== IMAGE HANDLING ===================== */
 
 function copyImage(
-    srcZip: PizZip,
-    dstZip: PizZip,
+    srcZip: Zip,
+    dstZip: Zip,
     relsXml: Document,
     ref: ImageRef,
     imageCounter: number
@@ -115,7 +114,7 @@ function copyImage(
     const rel = findRelationship(srcZip, ref.id);
     if (!rel) return imageCounter;
 
-    let imgPath = rel.target.startsWith("word/")
+    const imgPath = rel.target.startsWith("word/")
         ? rel.target
         : `word/${rel.target}`;
 
@@ -146,21 +145,21 @@ function copyImage(
 
 function processImages(
     node: Node,
-    srcZip: PizZip,
-    dstZip: PizZip,
+    srcZip: Zip,
+    dstZip: Zip,
     relsXml: Document,
     imageCounter: number
 ): number {
     const refs: ImageRef[] = [];
 
-    select(".//a:blip", node).forEach((n: any) => {
-        const id = (n as Element).getAttribute("r:embed");
-        if (id) refs.push({ node: n as Element, attr: "r:embed", id });
+    select(".//a:blip", node).forEach((n: Element) => {
+        const id = n.getAttribute("r:embed");
+        if (id) refs.push({ node: n, attr: "r:embed", id });
     });
 
-    select(".//v:imagedata", node).forEach((n: any) => {
-        const id = (n as Element).getAttribute("r:id");
-        if (id) refs.push({ node: n as Element, attr: "r:id", id });
+    select(".//v:imagedata", node).forEach((n: Element) => {
+        const id = n.getAttribute("r:id");
+        if (id) refs.push({ node: n, attr: "r:id", id });
     });
 
     for (const ref of refs) {
@@ -173,14 +172,13 @@ function processImages(
 /* ===================== MAIN MERGE FUNCTION ===================== */
 
 export function mergeDocx({
-                              baseDocxPath,
-                              appendDocxPath,
-                              outputPath,
-                          }: MergeDocxOptions): void {
+    baseDocxPath,
+    appendDocxPath,
+    outputPath,
+}: MergeDocxOptions): void {
     const baseZip = loadDocx(baseDocxPath);
     const appendZip = loadDocx(appendDocxPath);
 
-    /* Copy global definitions */
     [
         "word/styles.xml",
         "word/numbering.xml",
@@ -195,10 +193,9 @@ export function mergeDocx({
 
     const baseDocXml = parseXml(baseZip, "word/document.xml");
     const appendDocXml = parseXml(appendZip, "word/document.xml");
-    const baseElement = select("//w:body", baseDocXml);
-    const bodyElement = select("//w:body", appendDocXml);
-    const baseBody: any = baseElement ? baseElement[0] as Element : {};
-    const appendBody: any = bodyElement ? bodyElement[0] as Element : {};
+
+    const baseBody = select("//w:body", baseDocXml)[0] as Element;
+    const appendBody = select("//w:body", appendDocXml)[0] as Element;
 
     const relsPath = "word/_rels/document.xml.rels";
     const relsXml = parseXml(baseZip, relsPath);
@@ -206,8 +203,8 @@ export function mergeDocx({
     let imageCounter = 0;
 
     Array.from(appendBody.childNodes)
-        .filter((n: any) => n.nodeName !== "w:sectPr")
-        .forEach((node: any) => {
+        .filter(n => n.nodeName !== "w:sectPr")
+        .forEach(node => {
             const cloned = node.cloneNode(true);
             imageCounter = processImages(
                 cloned,
@@ -229,7 +226,7 @@ export function mergeDocx({
 }
 
 mergeDocx({
-  baseDocxPath: "./main.docx",
-  appendDocxPath: "./content.docx",
-  outputPath: "./final.docx",
+    baseDocxPath: "./main.docx",
+    appendDocxPath: "./content.docx",
+    outputPath: "./final.docx",
 });

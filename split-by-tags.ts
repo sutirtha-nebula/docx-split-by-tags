@@ -10,7 +10,7 @@ const NS: any = {
   rel: "http://schemas.openxmlformats.org/package/2006/relationships",
 };
 
-  function extractFirstDoc(inputFile: string, outputFile: string, splitTag: string): boolean {
+  export function extractFirstDoc(inputFile: string, outputFile: string, splitTag: string): boolean {
     const serializer = new XMLSerializer();
     const parser = new DOMParser();
     const srcZip: any = new PizZip(fs.readFileSync(inputFile));
@@ -62,7 +62,7 @@ const NS: any = {
     return true;
   }
 
-  function extractRemainingDoc(inputFile: string, outputFile: string, splitTag: string): boolean {
+  export function extractRemainingDoc(inputFile: string, outputFile: string, splitTag: string): boolean {
     const serializer = new XMLSerializer();
     const parser = new DOMParser();
     const srcZip: any = new PizZip(fs.readFileSync(inputFile));
