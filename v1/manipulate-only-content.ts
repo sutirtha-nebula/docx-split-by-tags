@@ -59,6 +59,20 @@ function hasLargeFontSize(p: Element): boolean {
     return false;
 }
 
+function isContentsParagraph(p: Element): boolean {
+    const pPr = p.getElementsByTagName("w:pPr")[0];
+    if (!pPr) return false;
+
+    const pStyle = pPr.getElementsByTagName("w:pStyle")[0];
+    if (!pStyle) return false;
+
+    const val = pStyle.getAttribute("w:val");
+    if (!val) return false;
+
+    return val.startsWith("Contents");
+}
+
+
 /**
  * Centralized check: Is paragraph non-content?
  */
@@ -72,7 +86,7 @@ function isNonContentParagraph(p: Element): boolean {
         }
     }
 
-    return isNonContentStyle(styleName) || isCenteredParagraph(p) || hasLargeFontSize(p);
+    return isNonContentStyle(styleName) || isCenteredParagraph(p) || hasLargeFontSize(p) || isContentsParagraph(p);
 }
 
 /**
@@ -129,4 +143,4 @@ export function colorContentParagraphs(
 }
 
 
-colorContentParagraphs("./templated1.doc/final_result.docx", "output.docx", "00008B");
+colorContentParagraphs("./templates/2026_01_Precision_AI_UFA_Template1.docx", "output.docx", "00008B");

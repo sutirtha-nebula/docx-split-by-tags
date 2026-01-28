@@ -15,8 +15,8 @@ function isNonContentStyle(styleName) {
         "Title",
         "Subtitle",
         "Caption",
-        // "TOC",
-        'Table of Contents',
+        "TOC",       // Table of Contents
+        "Contents", // Table of Contents
         "Header",
         "Footer",
         "SourceCode"
@@ -115,4 +115,4 @@ function colorContentParagraphs(inputFilePath, outputFilePath, colorHex // defau
     fs.writeFileSync(outputFilePath, zip.generate({ type: "nodebuffer" }));
     console.log("Content paragraph colors updated successfully and saved to ".concat(outputFilePath));
 }
-colorContentParagraphs("./templates/2026_01_Precision_AI_UFA_Template.docx", "output.docx", "00008B");
+colorContentParagraphs("./templates/2026_01_Precision_AI_UFA_Template1.docx", "output.docx", "00008B");
