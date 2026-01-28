@@ -3,24 +3,25 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var fs = require("fs");
 var pizzip_1 = require("pizzip");
 var xmldom_1 = require("xmldom");
-var zip = new pizzip_1.default(fs.readFileSync("./templates/final_result_main.docx"));
-var mode = "searchReplace"; // "title" | "heading" | "searchReplace" | "replaceContent"
-
+var zip = new pizzip_1.default(fs.readFileSync("./templates/2026_01_Precision_AI_UFA_Template1.docx"));
+var mode = "heading"; // "title" | "heading" | "searchReplace" | "replaceContent"
 var options = {
+    headingTexts: ["Executive Summary","Modified"],
+
     title: "My Document Title",
-    prefixText: "[PRE] ",
-    suffixText: " (POST)",
-    color: "808080",
-    fontSize: 16,
+    prefixText: "",
+    suffixText: "",
+    color: '49A361',
+    fontSize: null,
     fontFamily: "Calibri",
     underline: true,
-    bold: false,
+    bold: true,
     italic: true,
-    bgColor: "D9EAD3",
-    borderColor: "FF0000",
-    borderSize: 0,
+    bgColor: "941B39",
+    borderColor: "black",
+    borderSize: 20,
     borderStyle: "single",
-    searchText: "NMC",
+    searchText: "It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.",
 };
 function addPrefixSuffix(text, opts) {
     return "".concat(opts.prefixText || "").concat(text).concat(opts.suffixText || "");
@@ -104,6 +105,27 @@ if (opts.italic) {
             }
             u.setAttribute("w:val", "single");
         }
+        // shading background
+        if ("bgColor" in options && options.bgColor !== null) {
+            if (options.bgColor) {
+                var pPr = p.getElementsByTagName("w:pPr")[0];
+                if (!pPr) {
+                    pPr = doc.createElement("w:pPr");
+                    p.insertBefore(pPr, p.firstChild);
+                }
+                var shd = pPr.getElementsByTagName("w:shd")[0];
+                if (!shd) {
+                    shd = doc.createElement("w:shd");
+                    pPr.appendChild(shd);
+                }
+                shd.setAttribute("w:fill", options.bgColor);
+            }
+        }
+
+        // border
+        if ("borderSize" in options && options.borderSize !== 0) {
+            applyBorder(p, doc, options);
+        }
     }
 }
 function applyBorder(p, doc, opts) {
@@ -147,12 +169,24 @@ function getParagraphText(p) {
     }
     return fullText;
 }
-function createRun(doc, text, styled) {
+function cloneRunProperties(r) {
+    var rPr = r.getElementsByTagName("w:rPr")[0];
+    return rPr ? rPr.cloneNode(true) : null;
+}
+
+function createRun(doc, text, styled, existingRPr) {
     var run = doc.createElement("w:r");
+
+    // Preserve existing formatting
+    if (existingRPr) {
+        run.appendChild(existingRPr.cloneNode(true));
+    }
+
+
     if (styled) {
         var rPr = doc.createElement("w:rPr");
-         rPr.appendChild(doc.createElement("w:b"));
-        run.appendChild(rPr);
+        //  rPr.appendChild(doc.createElement("w:b"));
+        // run.appendChild(rPr);
         applyStyleToRuns([run], doc, options);
     }
     var t = doc.createElement("w:t");
@@ -163,42 +197,28 @@ function createRun(doc, text, styled) {
 }
 function rebuildParagraphWithMatches(p, doc, fullText, searchText) {
     // Remove everything except paragraph properties
-    const children = Array.from(p.childNodes);
-    children.forEach(node => {
+    var children = Array.from(p.childNodes);
+    children.forEach(function (node) {
         if (node.nodeName !== "w:pPr") {
             p.removeChild(node);
         }
     });
 
-    if (!fullText || !searchText) {
-        if (fullText) {
-            p.appendChild(createRun(doc, fullText, false));
-        }
-        return;
-    }
+    var normalizedFull = normalizeText(fullText);
+    var normalizedSearch = normalizeText(searchText);
 
-    const normalizedSearch = normalizeText(searchText);
+    var originalIndex = 0;
 
-    let cursor = 0;
-
-    while (cursor < fullText.length) {
-        // Find match in ORIGINAL text by scanning forward
-        let matchIndex = -1;
-
-        for (let i = cursor; i <= fullText.length - searchText.length; i++) {
-            const slice = fullText.slice(i, i + searchText.length);
-            if (normalizeText(slice) === normalizedSearch) {
-                matchIndex = i;
-                break;
-            }
-        }
-
+    while (true) {
+        var matchIndex = normalizedFull.indexOf(normalizedSearch);
         if (matchIndex === -1) break;
 
-        const before = fullText.slice(cursor, matchIndex);
-        const match = fullText.slice(matchIndex, matchIndex + searchText.length);
-
-        console.log("Match found:", { before, match });
+        // Find corresponding slice in ORIGINAL text
+        var before = fullText.slice(originalIndex, originalIndex + matchIndex);
+        var match = fullText.slice(
+            originalIndex + matchIndex,
+            originalIndex + matchIndex + searchText.length
+        );
 
         if (before) {
             p.appendChild(createRun(doc, before, false));
@@ -206,12 +226,14 @@ function rebuildParagraphWithMatches(p, doc, fullText, searchText) {
 
         p.appendChild(createRun(doc, match, true));
 
-        cursor = matchIndex + searchText.length;
+        // Advance both strings
+        originalIndex += matchIndex + searchText.length;
+        fullText = fullText.slice(matchIndex + searchText.length);
+        normalizedFull = normalizeText(fullText);
     }
 
-    // Append remaining text
-    if (cursor < fullText.length) {
-        p.appendChild(createRun(doc, fullText.slice(cursor), false));
+    if (fullText) {
+        p.appendChild(createRun(doc, fullText, false));
     }
 }
 
@@ -224,8 +246,8 @@ function isNonContentStyle(styleName) {
         "Title",
         "Subtitle",
         "Caption",
-        "TOC",      // Table of Contents
-        "Contents", // Table of Contents
+         "TOC",
+         "Contents", // Table of Contents
         "Header",
         "Footer",
         "SourceCode"
@@ -264,6 +286,84 @@ function hasLargeFontSize(p) {
     }
     return false;
 }
+function styleTextInParagraph(p, doc, searchText, options) {
+    var runs = Array.from(p.getElementsByTagName("w:r"));
+
+    var runInfo = [];
+    var fullText = "";
+
+    runs.forEach(function (r) {
+        var t = r.getElementsByTagName("w:t")[0];
+        if (!t) return;
+
+        var text = t.textContent || "";
+        runInfo.push({
+            r: r,
+            text: text,
+            start: fullText.length,
+            end: fullText.length + text.length
+        });
+        fullText += text;
+    });
+
+    var matchStart = fullText.indexOf(searchText);
+    if (matchStart === -1) return;
+
+    var matchEnd = matchStart + searchText.length;
+
+    // 🔥 find ALL runs involved in the match
+    var affected = runInfo.filter(function (info) {
+        return info.end > matchStart && info.start < matchEnd;
+    });
+
+    if (affected.length === 0) return;
+
+    var parent = affected[0].r.parentNode;
+    var anchor = affected[affected.length - 1].r.nextSibling;
+
+    var newRuns = [];
+
+    // 🔥 remove ALL affected runs
+    affected.forEach(function (info) {
+        parent.removeChild(info.r);
+    });
+
+    // 🔥 rebuild ONCE
+    affected.forEach(function (info) {
+        var beforeLen = Math.max(0, matchStart - info.start);
+        var matchLen =
+            Math.min(info.text.length, matchEnd - info.start) - beforeLen;
+
+        var before = info.text.slice(0, beforeLen);
+        var match  = info.text.slice(beforeLen, beforeLen + matchLen);
+        var after  = info.text.slice(beforeLen + matchLen);
+
+        var rPr = cloneRunProperties(info.r);
+
+        if (before)
+            parent.insertBefore(createRun(doc, before, false, rPr), anchor);
+
+        if (match) {
+            var matchRun = createRun(doc, match, true, rPr);
+            parent.insertBefore(matchRun, anchor);
+            newRuns.push(matchRun);
+        }
+
+        if (after)
+            parent.insertBefore(createRun(doc, after, false, rPr), anchor);
+    });
+
+    if (newRuns.length > 0) {
+        applyStyleToRuns(newRuns, doc, options);
+    }
+}
+
+
+
+
+
+
+
 /*** Centralized check: Is paragraph non-content? */
 function isNonContentParagraph(p) {
     var pPr = p.getElementsByTagName("w:pPr")[0];
@@ -299,38 +399,64 @@ else if (mode === "heading") {
     var xml = zip.file("word/document.xml").asText();
     var doc = new xmldom_1.DOMParser().parseFromString(xml, "text/xml");
     var paragraphs = doc.getElementsByTagName("w:p");
+
+    // normalize heading texts
+    var headingTexts = (options.headingTexts || []).map(function (t) {
+        return normalizeText(t);
+    });
+
     for (var i = 0; i < paragraphs.length; i++) {
         var p = paragraphs[i];
-        if (!isHeadingStyle(p))
+
+        if (!isHeadingStyle(p)) continue;
+
+        // get heading text
+        var headingText = getParagraphText(p);
+        var normalizedHeading = normalizeText(headingText);
+
+        // if headingTexts is provided, only process those headings
+        if (headingTexts.length > 0 && !headingTexts.includes(normalizedHeading)) {
             continue;
-        var runs = p.getElementsByTagName("w:r");
-        for (var r = 0; r < runs.length; r++) {
-            var t = runs[r].getElementsByTagName("w:t")[0];
-            if (t && t.textContent) {
-                t.textContent = addPrefixSuffix(t.textContent, options);
-            }
         }
-        applyStyleToRuns(runs, doc, options);
-        // shading background
-        if (options.bgColor) {
-            var pPr = p.getElementsByTagName("w:pPr")[0];
-            if (!pPr) {
-                pPr = doc.createElement("w:pPr");
-                p.insertBefore(pPr, p.firstChild);
-            }
-            var shd = pPr.getElementsByTagName("w:shd")[0];
-            if (!shd) {
-                shd = doc.createElement("w:shd");
-                pPr.appendChild(shd);
-            }
-            shd.setAttribute("w:fill", options.bgColor);
-        }
-        // border
-        applyBorder(p, doc, options);
+
+ var runs = Array.from(p.getElementsByTagName("w:r"));
+
+var textRuns = runs.filter(function (r) {
+    var t = r.getElementsByTagName("w:t")[0];
+    return t && t.textContent;
+});
+
+if (textRuns.length > 0) {
+    var prefix = options.prefixText || "";
+    var suffix = options.suffixText || "";
+
+    var firstT = textRuns[0].getElementsByTagName("w:t")[0];
+    var lastT  = textRuns[textRuns.length - 1].getElementsByTagName("w:t")[0];
+
+    var fullText = getParagraphText(p);
+
+    if (prefix && !fullText.startsWith(prefix)) {
+        firstT.textContent = prefix + firstT.textContent;
+        console.log("Added prefix to heading:", prefix, firstT.textContent);
     }
+
+    if (suffix && !fullText.endsWith(suffix)) {
+        lastT.textContent = lastT.textContent + suffix;
+        console.log("Added prefix to heading:", suffix, lastT.textContent);
+    }
+}
+
+
+
+        applyStyleToRuns(runs, doc, options);
+
+        
+    }
+
     zip.file("word/document.xml", new xmldom_1.XMLSerializer().serializeToString(doc));
     console.log("Headings updated!");
 }
+
 // ---------------- SEARCH / REPLACE ----------------
 else if (mode === "searchReplace") {
     if (!options.searchText) {
@@ -343,7 +469,7 @@ var doc = new xmldom_1.DOMParser().parseFromString(xml, "text/xml");
 // IMPORTANT: make it a static array
 var paragraphs = Array.from(doc.getElementsByTagName("w:p"));
 
-var normalizedSearch = normalizeText(options.searchText);
+    var normalizedSearch = normalizeText(options.searchText);
 
 for (var i = 0; i < paragraphs.length; i++) {
     var p = paragraphs[i];
@@ -353,12 +479,14 @@ for (var i = 0; i < paragraphs.length; i++) {
     if (!normalizedText.includes(normalizedSearch)) continue;
     // Rebuild paragraph with highlighted matches
 
-    rebuildParagraphWithMatches(p, doc, originalText, options.searchText);
+  styleTextInParagraph(p, doc, options.searchText, options);
+
 
     // border
     if ("borderSize" in options && options.borderSize !== 0) {
         applyBorder(p, doc, options);
     }
+    
 }
 
 zip.file(
