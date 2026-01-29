@@ -8,6 +8,7 @@
   "dependencies": {
     "@xmldom/xmldom": "^0.9.8",
     "asposewordscloud": "^26.1.0",
+    "color": "^5.0.3",
     "docxml": "^5.15.1",
     "docxtemplater": "^3.67.6",
     "dotenv": "^17.2.3",

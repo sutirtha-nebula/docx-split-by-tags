@@ -4,7 +4,6 @@ import { DOMParser, XMLSerializer } from "xmldom";
 
 interface Options {
     headingTexts?: string[];
-    title?: string;
     prefixText?: string;
     suffixText?: string;
     color?: string;
@@ -18,15 +17,13 @@ interface Options {
     borderSize?: any;
     borderStyle?: string;
     highlightColor?: string;
-    searchTexts?: string[];
+    contentTexts?: string[];
 }
 
-const zip = new PizZip(fs.readFileSync("./templates/2026_01_Precision_AI_UFA_Template1.docx"));
-const mode: any = "heading"; // "title" | "heading" | "searchReplace" | "replaceContent"
+const mode: any = "HEADING"; // "TITLE" | "HEADING" | "CONTENT" | "COMPLETE" | "MAIN"
 
 // const options: Options = {
 //     headingTexts: ["Executive \"Summary\"", "Modified"],
-//     title: "My Document Title",
 //     prefixText: "",
 //     suffixText: "",
 //     color: '49A361',
@@ -40,7 +37,7 @@ const mode: any = "heading"; // "title" | "heading" | "searchReplace" | "replace
 //     borderSize: 0,
 //     borderStyle: "single",
 //     highlightColor: "transparent",
-//     searchTexts: [
+//     contentTexts: [
 //         "Lorem Ipsum", "here"
 //     ],
 // };
@@ -68,22 +65,48 @@ function applyStyleToRuns(runs: any[], doc: any, opts: any): void {
             run.insertBefore(rPr, run.firstChild);
         }
         
-        if (opts.bold) {
-            let b = rPr.getElementsByTagName("w:b")[0];
-            if (!b) {
-                b = doc.createElement("w:b");
-                rPr.appendChild(b);
-            }
+       if (opts.bold !== null && opts.bold !== undefined) {
+    let b = rPr.getElementsByTagName("w:b")[0];
+
+    if (opts.bold === true) {
+        if (!b) {
+            b = doc.createElement("w:b");
+            rPr.appendChild(b);
         }
-        
-        if (opts.italic) {
+    } else {
+        if (b) {
+            rPr.removeChild(b);
+        }
+    }
+}
+
+        if (opts.italic !== null && opts.italic !== undefined) {
             let i = rPr.getElementsByTagName("w:i")[0];
-            if (!i) {
-                i = doc.createElement("w:i");
-                rPr.appendChild(i);
+            if (opts.italic === true) {
+                if (!i) {
+                    i = doc.createElement("w:i");
+                    rPr.appendChild(i);
+                }
+            } else {
+                if (i) {
+                    rPr.removeChild(i);
+                }
             }
         }
-        
+                if (opts.underline!== null && opts.underline!== undefined) {
+            let u = rPr.getElementsByTagName("w:u")[0];
+            if (opts.underline === true) {
+            if (!u) {
+                u = doc.createElement("w:u");
+                rPr.appendChild(u);
+                u.setAttribute("w:val", "single");
+            }
+            
+        }
+        else {
+                rPr.removeChild(u);
+            }
+    }
         if (opts.color) {
             let color = rPr.getElementsByTagName("w:color")[0];
             if (!color) {
@@ -112,32 +135,26 @@ function applyStyleToRuns(runs: any[], doc: any, opts: any): void {
             rFonts.setAttribute("w:hAnsi", opts.fontFamily);
         }
         
-        if (opts.underline) {
-            let u = rPr.getElementsByTagName("w:u")[0];
-            if (!u) {
-                u = doc.createElement("w:u");
-                rPr.appendChild(u);
-            }
-            u.setAttribute("w:val", "single");
-        }
-        
         if (opts.highlightColor) {
             let shd = rPr.getElementsByTagName("w:shd")[0];
             if (!shd) {
                 shd = doc.createElement("w:shd");
                 rPr.appendChild(shd);
             }
-            if (options.highlightColor === "transparent") {
+            if (opts.highlightColor === "transparent") {
                 shd.setAttribute("w:val", "clear");
                 shd.setAttribute("w:color", "auto");
                 shd.setAttribute("w:fill", "auto");
+                rPr.appendChild(shd);
             } else {
-                shd.setAttribute("w:fill", options.highlightColor);
+                shd.setAttribute("w:fill", opts.highlightColor);
+                rPr.appendChild(shd);
             }
         }
-        
-        if ("bgColor" in options && options.bgColor !== null) {
-            if (options.bgColor) {
+
+        if ("bgColor" in opts && opts.bgColor !== null) {
+            if (opts.bgColor) {
+                try{
                 const p = run.parentNode;
                 let pPr = p.getElementsByTagName("w:pPr")[0];
                 if (!pPr) {
@@ -149,13 +166,34 @@ function applyStyleToRuns(runs: any[], doc: any, opts: any): void {
                     shd = doc.createElement("w:shd");
                     pPr.appendChild(shd);
                 }
-                shd.setAttribute("w:fill", options.bgColor);
+                shd.setAttribute("w:fill", opts.bgColor);
+            } catch (e) {
+                 let shd = rPr.getElementsByTagName("w:shd")[0];
+            if (!shd) {
+                shd = doc.createElement("w:shd");
+                rPr.appendChild(shd);
+            }
+            if (opts.highlightColor === "transparent") {
+                shd.setAttribute("w:val", "clear");
+                shd.setAttribute("w:color", "auto");
+                shd.setAttribute("w:fill", "auto");
+                rPr.appendChild(shd);
+            } else {
+                shd.setAttribute("w:fill", opts.highlightColor);
+                rPr.appendChild(shd);
+            }
+            }
             }
         }
-        
-        if ("borderSize" in options && options.borderSize !== 0) {
+
+        if ("borderSize" in opts && opts.borderSize !== 0) {
             const p = run.parentNode;
-            applyBorder(p, doc, options);
+            try{
+            applyBorder(p, doc, opts);
+            }
+            catch(e){
+                 applyBorder(rPr, doc, opts);
+            }
         }
     }
 }
@@ -213,7 +251,7 @@ function cloneRunProperties(r: any): any {
     return rPr ? rPr.cloneNode(true) : null;
 }
 
-function createRun(doc: any, text: string, styled: boolean, existingRPr: any): any {
+function createRun(doc: any, text: string, styled: boolean, existingRPr: any, options: any): any {
     const run = doc.createElement("w:r");
     
     if (existingRPr) {
@@ -221,7 +259,7 @@ function createRun(doc: any, text: string, styled: boolean, existingRPr: any): a
     }
     
     if (styled) {
-        applyStyleToRuns([run], doc, Option);
+        applyStyleToRuns([run], doc, options);
     }
     
     const t = doc.createElement("w:t");
@@ -232,41 +270,41 @@ function createRun(doc: any, text: string, styled: boolean, existingRPr: any): a
     return run;
 }
 
-function rebuildParagraphWithMatches(p: any, doc: any, fullText: string, searchText: string): void {
-    const children = Array.from(p.childNodes);
-    children.forEach((node: any) => {
-        if (node.nodeName !== "w:pPr") {
-            p.removeChild(node);
-        }
-    });
+// function rebuildParagraphWithMatches(p: any, doc: any, fullText: string, searchText: string): void {
+//     const children = Array.from(p.childNodes);
+//     children.forEach((node: any) => {
+//         if (node.nodeName !== "w:pPr") {
+//             p.removeChild(node);
+//         }
+//     });
     
-    let normalizedFull = normalizeText(fullText);
-    const normalizedSearch = normalizeText(searchText);
+//     let normalizedFull = normalizeText(fullText);
+//     const normalizedSearch = normalizeText(searchText);
     
-    let originalIndex = 0;
+//     let originalIndex = 0;
     
-    while (true) {
-        const matchIndex = normalizedFull.indexOf(normalizedSearch);
-        if (matchIndex === -1) break;
+//     while (true) {
+//         const matchIndex = normalizedFull.indexOf(normalizedSearch);
+//         if (matchIndex === -1) break;
         
-        const before = fullText.slice(originalIndex, originalIndex + matchIndex);
-        const match = fullText.slice(originalIndex + matchIndex, originalIndex + matchIndex + searchText.length);
+//         const before = fullText.slice(originalIndex, originalIndex + matchIndex);
+//         const match = fullText.slice(originalIndex + matchIndex, originalIndex + matchIndex + searchText.length);
         
-        if (before) {
-            p.appendChild(createRun(doc, before, false, null));
-        }
+//         if (before) {
+//             p.appendChild(createRun(doc, before, false, null));
+//         }
         
-        p.appendChild(createRun(doc, match, true, null));
+//         p.appendChild(createRun(doc, match, true, null));
         
-        originalIndex += matchIndex + searchText.length;
-        fullText = fullText.slice(matchIndex + searchText.length);
-        normalizedFull = normalizeText(fullText);
-    }
+//         originalIndex += matchIndex + searchText.length;
+//         fullText = fullText.slice(matchIndex + searchText.length);
+//         normalizedFull = normalizeText(fullText);
+//     }
     
-    if (fullText) {
-        p.appendChild(createRun(doc, fullText, false, null));
-    }
-}
+//     if (fullText) {
+//         p.appendChild(createRun(doc, fullText, false, null));
+//     }
+// }
 
 function isNonContentStyle(styleName: any): boolean {
     if (!styleName) return false;
@@ -321,6 +359,21 @@ function hasLargeFontSize(p: any): boolean {
 }
 
 function styleTextInParagraph(p: any, doc: any, searchText: string, options: any): void {
+    function isHeadingParagraph(p: any): boolean {
+        const pPr = p.getElementsByTagName("w:pPr")[0];
+        if (!pPr) return false;
+
+        const pStyle = pPr.getElementsByTagName("w:pStyle")[0];
+        if (!pStyle) return false;
+
+        const val = pStyle.getAttribute("w:val") || "";
+        return /^Heading\d+$/.test(val) || val === "Heading";
+    }
+
+    // ---- MODE CHECK (ONLY ADDITION) ----
+    if (mode === "CONTENT" && isHeadingParagraph(p)) {
+        return;
+    }
     function buildRunInfo(): any {
         const runs = Array.from(p.getElementsByTagName("w:r"));
         const runInfo: any[] = [];
@@ -392,17 +445,17 @@ function styleTextInParagraph(p: any, doc: any, searchText: string, options: any
             const rPr = cloneRunProperties(info.r);
             
             if (before) {
-                parent.insertBefore(createRun(doc, before, false, rPr), anchor);
+                parent.insertBefore(createRun(doc, before, false, rPr, options), anchor);
             }
             
             if (match) {
-                const matchRun = createRun(doc, match, true, rPr);
+                const matchRun = createRun(doc, match, true, rPr, options);
                 parent.insertBefore(matchRun, anchor);
                 newRuns.push(matchRun);
             }
             
             if (after) {
-                parent.insertBefore(createRun(doc, after, false, rPr), anchor);
+                parent.insertBefore(createRun(doc, after, false, rPr, options), anchor);
             }
         });
         
@@ -430,7 +483,7 @@ function isNonContentParagraph(p: any): boolean {
 //     const coreXml = zip.file("docProps/core.xml")!.asText();
 //     const coreDoc = new DOMParser().parseFromString(coreXml, "text/xml");
 //     const titleNode = coreDoc.getElementsByTagName("dc:title")[0];
-//     const newTitleText = addPrefixSuffix(options.title || "", options);
+//     //const newTitleText = addPrefixSuffix(options.title || "", options);
     
 //     if (titleNode) {
 //         titleNode.textContent = newTitleText;
@@ -445,9 +498,8 @@ function isNonContentParagraph(p: any): boolean {
 //     console.log("Title updated!");
 // }
 
-function updateHeading(inputPath: any, options: any): void {
+function updateHeading(inputPath:any,options:any): void {
     const zip = new PizZip(fs.readFileSync(inputPath));
-
     const xml = zip.file("word/document.xml")!.asText();
     const doc = new DOMParser().parseFromString(xml, "text/xml");
     const paragraphs = doc.getElementsByTagName("w:p");
@@ -498,52 +550,76 @@ function updateHeading(inputPath: any, options: any): void {
     }
     
     zip.file("word/document.xml", new XMLSerializer().serializeToString(doc));
-    console.log("Headings updated!");
-
     fs.writeFileSync(inputPath, zip.generate({ type: "nodebuffer" }) as any);
-    console.log("File saved!");
+console.log("File saved!");
+    console.log("Headings updated!");
 }
 
-function searchUpdate(inputPath: any, options: any): void {
+function searchUpdate(inputPath:any,options:any): void {
     const zip = new PizZip(fs.readFileSync(inputPath));
-
-    if (!options.searchTexts || options.searchTexts.length === 0) {
-        throw new Error("searchTexts[] is required for searchReplace mode");
+    if (!options.contentTexts || options.contentTexts.length === 0) {
+        throw new Error("contentTexts[] is required for searchReplace mode");
     }
     
     const xml = zip.file("word/document.xml")!.asText();
     const doc = new DOMParser().parseFromString(xml, "text/xml");
     const paragraphs = Array.from(doc.getElementsByTagName("w:p"));
-    const normalizedSearchTexts = options.searchTexts!.map(normalizeText);
+    const normalizedSearchTexts = options.contentTexts!.map(normalizeText);
     
     for (let i = 0; i < paragraphs.length; i++) {
         const p = paragraphs[i];
         let normalizedParaText = normalizeText(getParagraphText(p));
         
         for (let s = 0; s < normalizedSearchTexts.length; s++) {
-            const searchText = options.searchTexts![s];
+            const searchText = options.contentTexts![s];
             const normalizedSearch = normalizedSearchTexts[s];
             
             if (!normalizedParaText.includes(normalizedSearch)) continue;
             
             styleTextInParagraph(p, doc, searchText, options);
             
-            if ("borderSize" in options && options.borderSize !== 0) {
-                applyBorder(p, doc, options);
-            }
+            normalizedParaText = normalizeText(getParagraphText(p));
+        }
+    }
+    
+    zip.file("word/document.xml", new XMLSerializer().serializeToString(doc));
+    fs.writeFileSync(inputPath, zip.generate({ type: "nodebuffer" }) as any);
+console.log("File saved!");
+}
+function searchUpdateMain(inputPath:any,options:any): void {
+    const zip = new PizZip(fs.readFileSync(inputPath));
+    if (!options.contentTexts || options.contentTexts.length === 0) {
+        throw new Error("contentTexts[] is required for searchReplace mode");
+    }
+    
+    const xml = zip.file("word/document.xml")!.asText();
+    const doc = new DOMParser().parseFromString(xml, "text/xml");
+    const paragraphs = Array.from(doc.getElementsByTagName("w:p"));
+    const normalizedSearchTexts = options.contentTexts!.map(normalizeText);
+    
+    for (let i = 0; i < paragraphs.length; i++) {
+        const p = paragraphs[i];
+        let normalizedParaText = normalizeText(getParagraphText(p));
+        
+        for (let s = 0; s < normalizedSearchTexts.length; s++) {
+            const searchText = options.contentTexts![s];
+            const normalizedSearch = normalizedSearchTexts[s];
+            
+            if (!normalizedParaText.includes(normalizedSearch)) continue;
+            
+            styleTextInParagraph(p, doc, searchText, options);
             
             normalizedParaText = normalizeText(getParagraphText(p));
         }
     }
     
     zip.file("word/document.xml", new XMLSerializer().serializeToString(doc));
-    fs.writeFileSync(inputPath, zip.generate({ type: "nodebuffer" }));
-    console.log("File saved!");
+    fs.writeFileSync(inputPath, zip.generate({ type: "nodebuffer" }) as any);
+console.log("File saved!");
 }
 
-function replaceUpdate(inputPath: any, options: any): void {
+function replaceUpdate(inputPath:any,options:any): void {
     const zip = new PizZip(fs.readFileSync(inputPath));
-
     const xml = zip.file("word/document.xml")!.asText();
     const doc = new DOMParser().parseFromString(xml, "text/xml");
     const paragraphs = doc.getElementsByTagName("w:p");
@@ -568,48 +644,60 @@ function replaceUpdate(inputPath: any, options: any): void {
     }
     
     zip.file("word/document.xml", new XMLSerializer().serializeToString(doc));
+    fs.writeFileSync(inputPath, zip.generate({ type: "nodebuffer" }) as any);
+console.log("File saved!");
     console.log("Content replaced!");
-    fs.writeFileSync(inputPath, zip.generate({ type: "nodebuffer" }));
-    console.log("File saved!");
 }
 
 // // ---------------- TITLE ----------------
-// if (mode === "title") {
+// if (mode === "TITLE") {
 //     updateTitle();
 // }
-// // ---------------- HEADING ----------------
-// else if (mode === "heading") {
-//     updateHeading("./templates/2026_01_Precision_AI_UFA_Template1.docx", options);
+// ---------------- HEADING ----------------
+// if (mode === "HEADING") {
+//     updateHeading();
 // }
-// else if (mode === "searchReplace") {
-//     searchUpdate("./templates/2026_01_Precision_AI_UFA_Template1.docx", options);
+// // ---------------- SEARCH & REPLACE STYLE ----------------
+// else if (mode === "CONTENT") {
+//     searchUpdate();
+// }
+// // ---------------- SEARCH & REPLACE MAIN PAGE STYLE ----------------
+// else if (mode === "MAIN") {
+//     searchUpdateMain();
 // }
 // // ---------------- REPLACE CONTENT ----------------
-// else if (mode === "replaceContent") {
-//     replaceUpdate("./templates/2026_01_Precision_AI_UFA_Template1.docx", options);
+// else if (mode === "COMPLETE") {
+//     replaceUpdate();
 // }
 
-export function processDocument(
+function processDocument(
     mode: any,
     templatePath: string,
     options: Options
 ): void {
     switch (mode) {
-        case "heading":
+        case "HEADING":
             updateHeading(templatePath, options);
             break;
 
-        case "searchReplace":
+        case "CONTENT":
             searchUpdate(templatePath, options);
             break;
 
-        case "replaceContent":
+        case "COMPLETE":
             replaceUpdate(templatePath, options);
+            break;
+
+        case "MAIN":
+            searchUpdateMain(templatePath, options);
             break;
 
         default:
             break;
     }
+
 }
 
-//processDocument(mode, "./templates/2026_01_Precision_AI_UFA_Template1.docx", Options)
+// processDocument(mode, "./templates/2026_01_Precision_AI_UFA_Template1.docx", options)
+// fs.writeFileSync("output.docx", zip.generate({ type: "nodebuffer" }) as any);
+console.log("File saved!");
