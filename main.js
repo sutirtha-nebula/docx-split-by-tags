@@ -4,7 +4,7 @@ var fs = require("fs");
 var pizzip_1 = require("pizzip");
 var xmldom_1 = require("xmldom");
 var zip = new pizzip_1.default(fs.readFileSync("./templates/2026_01_Precision_AI_UFA_Template1.docx"));
-var mode = "replaceContent"; // "title" | "heading" | "searchReplace" | "replaceContent"
+var mode = "searchReplace"; // "title" | "heading" | "searchReplace" | "replaceContent"
 var options = {
     headingTexts: ["Executive Summary", "Modified"],
     title: "My Document Title",
@@ -21,10 +21,7 @@ var options = {
     borderSize: 0,
     borderStyle: "single",
     searchTexts: [
-        "It has survived not only five centuries",
-        "desktop publishing software like Aldus PageMaker",
         "Lorem Ipsum",
-        "here",
     ],
 };
 function addPrefixSuffix(text, opts) {
@@ -314,8 +311,7 @@ function isNonContentParagraph(p) {
     }
     return isNonContentStyle(styleName) || isCenteredParagraph(p) || hasLargeFontSize(p);
 }
-// ---------------- TITLE ----------------
-if (mode === "title") {
+function updateTitle() {
     var coreXml = zip.file("docProps/core.xml").asText();
     var coreDoc = new xmldom_1.DOMParser().parseFromString(coreXml, "text/xml");
     var titleNode = coreDoc.getElementsByTagName("dc:title")[0];
@@ -332,8 +328,7 @@ if (mode === "title") {
     zip.file("docProps/core.xml", new xmldom_1.XMLSerializer().serializeToString(coreDoc));
     console.log("Title updated!");
 }
-// ---------------- HEADING ----------------
-else if (mode === "heading") {
+function updateHeading() {
     var xml = zip.file("word/document.xml").asText();
     var doc = new xmldom_1.DOMParser().parseFromString(xml, "text/xml");
     var paragraphs = doc.getElementsByTagName("w:p");
@@ -377,7 +372,7 @@ else if (mode === "heading") {
     zip.file("word/document.xml", new xmldom_1.XMLSerializer().serializeToString(doc));
     console.log("Headings updated!");
 }
-else if (mode === "searchReplace") {
+function searchUpdate() {
     if (!options.searchTexts || options.searchTexts.length === 0) {
         throw new Error("searchTexts[] is required for searchReplace mode");
     }
@@ -402,8 +397,7 @@ else if (mode === "searchReplace") {
     }
     zip.file("word/document.xml", new xmldom_1.XMLSerializer().serializeToString(doc));
 }
-// ---------------- REPLACE CONTENT ----------------
-else if (mode === "replaceContent") {
+function replaceUpdate() {
     var xml = zip.file("word/document.xml").asText();
     var doc = new xmldom_1.DOMParser().parseFromString(xml, "text/xml");
     var paragraphs = doc.getElementsByTagName("w:p");
@@ -424,6 +418,21 @@ else if (mode === "replaceContent") {
     }
     zip.file("word/document.xml", new xmldom_1.XMLSerializer().serializeToString(doc));
     console.log("Content replaced!");
+}
+// ---------------- TITLE ----------------
+if (mode === "title") {
+    updateTitle();
+}
+// ---------------- HEADING ----------------
+else if (mode === "heading") {
+    updateHeading();
+}
+else if (mode === "searchReplace") {
+    searchUpdate();
+}
+// ---------------- REPLACE CONTENT ----------------
+else if (mode === "replaceContent") {
+    replaceUpdate();
 }
 fs.writeFileSync("output.docx", zip.generate({ type: "nodebuffer" }));
 console.log("File saved!");

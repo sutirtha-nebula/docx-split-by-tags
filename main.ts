@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import { update } from 'lodash';
 import Pizzip from 'pizzip';
 import { DOMParser, XMLSerializer } from 'xmldom';
 
@@ -21,7 +22,7 @@ interface Options {
 }
 
 const zip = new Pizzip(fs.readFileSync("./templates/2026_01_Precision_AI_UFA_Template1.docx"));
-const mode: any = "heading"; // "title" | "heading" | "searchReplace" | "replaceContent"
+const mode: any = "searchReplace"; // "title" | "heading" | "searchReplace" | "replaceContent"
 
 const options: Options = {
     headingTexts: ["Executive Summary", "Modified"],
@@ -39,10 +40,7 @@ const options: Options = {
     borderSize: 0,
     borderStyle: "single",
     searchTexts: [
-        "It has survived not only five centuries",
-        "desktop publishing software like Aldus PageMaker",
         "Lorem Ipsum",
-        "here",
     ],
 };
 
@@ -393,8 +391,7 @@ function isNonContentParagraph(p: any): boolean {
     return isNonContentStyle(styleName) || isCenteredParagraph(p) || hasLargeFontSize(p);
 }
 
-// ---------------- TITLE ----------------
-if (mode === "title") {
+function updateTitle(){
     const coreXml = zip.file("docProps/core.xml")!.asText();
     const coreDoc = new DOMParser().parseFromString(coreXml, "text/xml");
     const titleNode = coreDoc.getElementsByTagName("dc:title")[0];
@@ -412,8 +409,8 @@ if (mode === "title") {
     zip.file("docProps/core.xml", new XMLSerializer().serializeToString(coreDoc));
     console.log("Title updated!");
 }
-// ---------------- HEADING ----------------
-else if (mode === "heading") {
+
+function updateHeading(){
     const xml = zip.file("word/document.xml")!.asText();
     const doc = new DOMParser().parseFromString(xml, "text/xml");
     const paragraphs = doc.getElementsByTagName("w:p");
@@ -468,8 +465,10 @@ else if (mode === "heading") {
 
     zip.file("word/document.xml", new XMLSerializer().serializeToString(doc));
     console.log("Headings updated!");
-} else if (mode === "searchReplace") {
-    if (!options.searchTexts || options.searchTexts.length === 0) {
+}
+
+function searchUpdate(){
+     if (!options.searchTexts || options.searchTexts.length === 0) {
         throw new Error("searchTexts[] is required for searchReplace mode");
     }
 
@@ -503,8 +502,8 @@ else if (mode === "heading") {
         new XMLSerializer().serializeToString(doc)
     );
 }
-// ---------------- REPLACE CONTENT ----------------
-else if (mode === "replaceContent") {
+
+function replaceUpdate(){ 
     const xml = zip.file("word/document.xml")!.asText();
     const doc = new DOMParser().parseFromString(xml, "text/xml");
     const paragraphs = doc.getElementsByTagName("w:p");
@@ -530,6 +529,22 @@ else if (mode === "replaceContent") {
     
     zip.file("word/document.xml", new XMLSerializer().serializeToString(doc));
     console.log("Content replaced!");
+}
+
+
+// ---------------- TITLE ----------------
+if (mode === "title") {
+    updateTitle()
+}
+// ---------------- HEADING ----------------
+else if (mode === "heading") {
+    updateHeading()
+} else if (mode === "searchReplace") {
+    searchUpdate();
+}
+// ---------------- REPLACE CONTENT ----------------
+else if (mode === "replaceContent") {
+    replaceUpdate();
 }
 
 fs.writeFileSync("output.docx", zip.generate({ type: "nodebuffer" }) as any);
