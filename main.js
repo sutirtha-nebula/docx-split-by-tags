@@ -4,10 +4,9 @@ var fs = require("fs");
 var pizzip_1 = require("pizzip");
 var xmldom_1 = require("xmldom");
 var zip = new pizzip_1.default(fs.readFileSync("./templates/2026_01_Precision_AI_UFA_Template1.docx"));
-var mode = "heading"; // "title" | "heading" | "searchReplace" | "replaceContent"
+var mode = "replaceContent"; // "title" | "heading" | "searchReplace" | "replaceContent"
 var options = {
-    headingTexts: ["Executive Summary","Modified"],
-
+    headingTexts: ["Executive Summary", "Modified"],
     title: "My Document Title",
     prefixText: "",
     suffixText: "",
@@ -21,7 +20,7 @@ var options = {
     borderColor: "black",
     borderSize: 0,
     borderStyle: "single",
-        searchTexts: [
+    searchTexts: [
         "It has survived not only five centuries",
         "desktop publishing software like Aldus PageMaker",
         "Lorem Ipsum",
@@ -33,21 +32,13 @@ function addPrefixSuffix(text, opts) {
 }
 function normalizeText(text) {
     return text
-        // normalize unicode
         .normalize("NFKC")
-
-        // convert curly quotes → straight quotes
         .replace(/[\u2018\u2019]/g, "'")
         .replace(/[\u201C\u201D]/g, '"')
-
-        // convert non-breaking spaces → normal spaces
         .replace(/\u00A0/g, " ")
-
-        // collapse whitespace
         .replace(/\s+/g, " ")
         .trim();
 }
-
 function applyStyleToRuns(runs, doc, opts) {
     for (var r = 0; r < runs.length; r++) {
         var run = runs[r];
@@ -56,7 +47,6 @@ function applyStyleToRuns(runs, doc, opts) {
             rPr = doc.createElement("w:rPr");
             run.insertBefore(rPr, run.firstChild);
         }
-        // Bold
         if (opts.bold) {
             var b = rPr.getElementsByTagName("w:b")[0];
             if (!b) {
@@ -64,16 +54,13 @@ function applyStyleToRuns(runs, doc, opts) {
                 rPr.appendChild(b);
             }
         }
-        // Italic
-if (opts.italic) {
-    var i = rPr.getElementsByTagName("w:i")[0];
-    if (!i) {
-        i = doc.createElement("w:i");
-        rPr.appendChild(i);
-    }
-}
-
-        // Color
+        if (opts.italic) {
+            var i = rPr.getElementsByTagName("w:i")[0];
+            if (!i) {
+                i = doc.createElement("w:i");
+                rPr.appendChild(i);
+            }
+        }
         if (opts.color) {
             var color = rPr.getElementsByTagName("w:color")[0];
             if (!color) {
@@ -82,7 +69,6 @@ if (opts.italic) {
             }
             color.setAttribute("w:val", opts.color);
         }
-        // Font size
         if (opts.fontSize) {
             var sz = rPr.getElementsByTagName("w:sz")[0];
             if (!sz) {
@@ -91,7 +77,6 @@ if (opts.italic) {
             }
             sz.setAttribute("w:val", opts.fontSize.toString());
         }
-        // Font family
         if (opts.fontFamily) {
             var rFonts = rPr.getElementsByTagName("w:rFonts")[0];
             if (!rFonts) {
@@ -101,7 +86,6 @@ if (opts.italic) {
             rFonts.setAttribute("w:ascii", opts.fontFamily);
             rFonts.setAttribute("w:hAnsi", opts.fontFamily);
         }
-        // Underline
         if (opts.underline) {
             var u = rPr.getElementsByTagName("w:u")[0];
             if (!u) {
@@ -110,9 +94,9 @@ if (opts.italic) {
             }
             u.setAttribute("w:val", "single");
         }
-        // shading background
         if ("bgColor" in options && options.bgColor !== null) {
             if (options.bgColor) {
+                var p = run.parentNode;
                 var pPr = p.getElementsByTagName("w:pPr")[0];
                 if (!pPr) {
                     pPr = doc.createElement("w:pPr");
@@ -126,9 +110,8 @@ if (opts.italic) {
                 shd.setAttribute("w:fill", options.bgColor);
             }
         }
-
-        // border
         if ("borderSize" in options && options.borderSize !== 0) {
+            var p = run.parentNode;
             applyBorder(p, doc, options);
         }
     }
@@ -139,10 +122,10 @@ function applyBorder(p, doc, opts) {
         pPr = doc.createElement("w:pPr");
         p.insertBefore(pPr, p.firstChild);
     }
-    // Remove existing border if exists
     var oldBdr = pPr.getElementsByTagName("w:pBdr")[0];
-    if (oldBdr)
+    if (oldBdr) {
         pPr.removeChild(oldBdr);
+    }
     var pBdr = doc.createElement("w:pBdr");
     pPr.appendChild(pBdr);
     var sides = ["top", "left", "bottom", "right"];
@@ -165,7 +148,6 @@ function isHeadingStyle(p) {
     var styleVal = pStyle.getAttribute("w:val");
     return !!styleVal && styleVal.startsWith("Heading");
 }
-/* -------- SEARCH / REPLACE HELPERS -------- */
 function getParagraphText(p) {
     var texts = p.getElementsByTagName("w:t");
     var fullText = "";
@@ -178,71 +160,48 @@ function cloneRunProperties(r) {
     var rPr = r.getElementsByTagName("w:rPr")[0];
     return rPr ? rPr.cloneNode(true) : null;
 }
-
 function createRun(doc, text, styled, existingRPr) {
     var run = doc.createElement("w:r");
-
-    // Preserve existing formatting
     if (existingRPr) {
         run.appendChild(existingRPr.cloneNode(true));
     }
-
-
     if (styled) {
-        var rPr = doc.createElement("w:rPr");
-        //  rPr.appendChild(doc.createElement("w:b"));
-        // run.appendChild(rPr);
         applyStyleToRuns([run], doc, options);
     }
     var t = doc.createElement("w:t");
-      t.setAttribute("xml:space", "preserve");
+    t.setAttribute("xml:space", "preserve");
     t.textContent = text;
     run.appendChild(t);
     return run;
 }
 function rebuildParagraphWithMatches(p, doc, fullText, searchText) {
-    // Remove everything except paragraph properties
     var children = Array.from(p.childNodes);
     children.forEach(function (node) {
         if (node.nodeName !== "w:pPr") {
             p.removeChild(node);
         }
     });
-
     var normalizedFull = normalizeText(fullText);
     var normalizedSearch = normalizeText(searchText);
-
     var originalIndex = 0;
-
     while (true) {
         var matchIndex = normalizedFull.indexOf(normalizedSearch);
-        if (matchIndex === -1) break;
-
-        // Find corresponding slice in ORIGINAL text
+        if (matchIndex === -1)
+            break;
         var before = fullText.slice(originalIndex, originalIndex + matchIndex);
-        var match = fullText.slice(
-            originalIndex + matchIndex,
-            originalIndex + matchIndex + searchText.length
-        );
-
+        var match = fullText.slice(originalIndex + matchIndex, originalIndex + matchIndex + searchText.length);
         if (before) {
-            p.appendChild(createRun(doc, before, false));
+            p.appendChild(createRun(doc, before, false, null));
         }
-
-        p.appendChild(createRun(doc, match, true));
-
-        // Advance both strings
+        p.appendChild(createRun(doc, match, true, null));
         originalIndex += matchIndex + searchText.length;
         fullText = fullText.slice(matchIndex + searchText.length);
         normalizedFull = normalizeText(fullText);
     }
-
     if (fullText) {
-        p.appendChild(createRun(doc, fullText, false));
+        p.appendChild(createRun(doc, fullText, false, null));
     }
 }
-
-/* -------- REPLACE CONTENT HELPERS -------- */
 function isNonContentStyle(styleName) {
     if (!styleName)
         return false;
@@ -251,15 +210,14 @@ function isNonContentStyle(styleName) {
         "Title",
         "Subtitle",
         "Caption",
-         "TOC",
-         "Contents", // Table of Contents
+        "TOC",
+        "Contents",
         "Header",
         "Footer",
         "SourceCode"
     ];
     return nonContentPrefixes.some(function (prefix) { return styleName.startsWith(prefix); });
 }
-/*** Checks if paragraph has center alignment ***/
 function isCenteredParagraph(p) {
     var pPr = p.getElementsByTagName("w:pPr")[0];
     if (!pPr)
@@ -270,7 +228,6 @@ function isCenteredParagraph(p) {
     var val = jc.getAttribute("w:val");
     return val === "center";
 }
-/*** Checks if paragraph has any run with font size > 16pt (w:sz is half-points, so > 32) */
 function hasLargeFontSize(p) {
     var runs = p.getElementsByTagName("w:r");
     for (var i = 0; i < runs.length; i++) {
@@ -285,7 +242,7 @@ function hasLargeFontSize(p) {
         if (!val)
             continue;
         var size = parseInt(val, 10);
-        if (size > 32) { // 16pt * 2 (half points)
+        if (size > 32) {
             return true;
         }
     }
@@ -293,14 +250,12 @@ function hasLargeFontSize(p) {
 }
 function styleTextInParagraph(p, doc, searchText, options) {
     var runs = Array.from(p.getElementsByTagName("w:r"));
-
     var runInfo = [];
     var fullText = "";
-
     runs.forEach(function (r) {
         var t = r.getElementsByTagName("w:t")[0];
-        if (!t) return;
-
+        if (!t)
+            return;
         var text = t.textContent || "";
         runInfo.push({
             r: r,
@@ -310,66 +265,44 @@ function styleTextInParagraph(p, doc, searchText, options) {
         });
         fullText += text;
     });
-
     var matchStart = fullText.indexOf(searchText);
-    if (matchStart === -1) return;
-
+    if (matchStart === -1)
+        return;
     var matchEnd = matchStart + searchText.length;
-
-    // 🔥 find ALL runs involved in the match
     var affected = runInfo.filter(function (info) {
         return info.end > matchStart && info.start < matchEnd;
     });
-
-    if (affected.length === 0) return;
-
+    if (affected.length === 0)
+        return;
     var parent = affected[0].r.parentNode;
     var anchor = affected[affected.length - 1].r.nextSibling;
-
     var newRuns = [];
-
-    // 🔥 remove ALL affected runs
     affected.forEach(function (info) {
         parent.removeChild(info.r);
     });
-
-    // 🔥 rebuild ONCE
     affected.forEach(function (info) {
         var beforeLen = Math.max(0, matchStart - info.start);
-        var matchLen =
-            Math.min(info.text.length, matchEnd - info.start) - beforeLen;
-
+        var matchLen = Math.min(info.text.length, matchEnd - info.start) - beforeLen;
         var before = info.text.slice(0, beforeLen);
-        var match  = info.text.slice(beforeLen, beforeLen + matchLen);
-        var after  = info.text.slice(beforeLen + matchLen);
-
+        var match = info.text.slice(beforeLen, beforeLen + matchLen);
+        var after = info.text.slice(beforeLen + matchLen);
         var rPr = cloneRunProperties(info.r);
-
-        if (before)
+        if (before) {
             parent.insertBefore(createRun(doc, before, false, rPr), anchor);
-
+        }
         if (match) {
             var matchRun = createRun(doc, match, true, rPr);
             parent.insertBefore(matchRun, anchor);
             newRuns.push(matchRun);
         }
-
-        if (after)
+        if (after) {
             parent.insertBefore(createRun(doc, after, false, rPr), anchor);
+        }
     });
-
     if (newRuns.length > 0) {
         applyStyleToRuns(newRuns, doc, options);
     }
 }
-
-
-
-
-
-
-
-/*** Centralized check: Is paragraph non-content? */
 function isNonContentParagraph(p) {
     var pPr = p.getElementsByTagName("w:pPr")[0];
     var styleName = null;
@@ -404,99 +337,70 @@ else if (mode === "heading") {
     var xml = zip.file("word/document.xml").asText();
     var doc = new xmldom_1.DOMParser().parseFromString(xml, "text/xml");
     var paragraphs = doc.getElementsByTagName("w:p");
-
-    // normalize heading texts
     var headingTexts = (options.headingTexts || []).map(function (t) {
         return normalizeText(t);
     });
-
     for (var i = 0; i < paragraphs.length; i++) {
         var p = paragraphs[i];
-
-        if (!isHeadingStyle(p)) continue;
-
-        // get heading text
+        if (!isHeadingStyle(p))
+            continue;
         var headingText = getParagraphText(p);
         var normalizedHeading = normalizeText(headingText);
-
-        // if headingTexts is provided, only process those headings
         if (headingTexts.length > 0 && !headingTexts.includes(normalizedHeading)) {
             continue;
         }
-
- var runs = Array.from(p.getElementsByTagName("w:r"));
-
-var textRuns = runs.filter(function (r) {
-    var t = r.getElementsByTagName("w:t")[0];
-    return t && t.textContent;
-});
-
-if (textRuns.length > 0) {
-    var prefix = options.prefixText || "";
-    var suffix = options.suffixText || "";
-
-    var firstT = textRuns[0].getElementsByTagName("w:t")[0];
-    var lastT  = textRuns[textRuns.length - 1].getElementsByTagName("w:t")[0];
-
-    var fullText = getParagraphText(p);
-
-    if (prefix && !fullText.startsWith(prefix)) {
-        firstT.textContent = prefix + firstT.textContent;
-        console.log("Added prefix to heading:", prefix, firstT.textContent);
+        var runs = Array.from(p.getElementsByTagName("w:r"));
+        // Fix: Type the textRuns array properly
+        var textRuns = runs.filter(function (r) {
+            var t = r.getElementsByTagName("w:t")[0];
+            return t && t.textContent;
+        });
+        if (textRuns.length > 0) {
+            var prefix = options.prefixText || "";
+            var suffix = options.suffixText || "";
+            // Fix: Cast to any to avoid TypeScript errors
+            var firstT = textRuns[0].getElementsByTagName("w:t")[0];
+            var lastT = textRuns[textRuns.length - 1].getElementsByTagName("w:t")[0];
+            var fullText = getParagraphText(p);
+            if (prefix && !fullText.startsWith(prefix)) {
+                firstT.textContent = prefix + firstT.textContent;
+                console.log("Added prefix to heading:", prefix, firstT.textContent);
+            }
+            if (suffix && !fullText.endsWith(suffix)) {
+                lastT.textContent = lastT.textContent + suffix;
+                console.log("Added suffix to heading:", suffix, lastT.textContent);
+            }
+        }
+        var runsToStyle = Array.from(p.getElementsByTagName("w:r"));
+        applyStyleToRuns(runsToStyle, doc, options);
     }
-
-    if (suffix && !fullText.endsWith(suffix)) {
-        lastT.textContent = lastT.textContent + suffix;
-        console.log("Added prefix to heading:", suffix, lastT.textContent);
-    }
-}
-
-
-
-        applyStyleToRuns(runs, doc, options);
-
-        
-    }
-
     zip.file("word/document.xml", new xmldom_1.XMLSerializer().serializeToString(doc));
     console.log("Headings updated!");
-} else if (mode === "searchReplace") {
-
+}
+else if (mode === "searchReplace") {
     if (!options.searchTexts || options.searchTexts.length === 0) {
         throw new Error("searchTexts[] is required for searchReplace mode");
     }
-
     var xml = zip.file("word/document.xml").asText();
     var doc = new xmldom_1.DOMParser().parseFromString(xml, "text/xml");
-
     var paragraphs = Array.from(doc.getElementsByTagName("w:p"));
-
     var normalizedSearchTexts = options.searchTexts.map(normalizeText);
-
     for (var i = 0; i < paragraphs.length; i++) {
         var p = paragraphs[i];
         var normalizedParaText = normalizeText(getParagraphText(p));
-
         for (var s = 0; s < normalizedSearchTexts.length; s++) {
             var searchText = options.searchTexts[s];
             var normalizedSearch = normalizedSearchTexts[s];
-
-            if (!normalizedParaText.includes(normalizedSearch)) continue;
-
+            if (!normalizedParaText.includes(normalizedSearch))
+                continue;
             styleTextInParagraph(p, doc, searchText, options);
-
             if ("borderSize" in options && options.borderSize !== 0) {
                 applyBorder(p, doc, options);
             }
-
             normalizedParaText = normalizeText(getParagraphText(p));
         }
     }
-
-    zip.file(
-        "word/document.xml",
-        new xmldom_1.XMLSerializer().serializeToString(doc)
-    );
+    zip.file("word/document.xml", new xmldom_1.XMLSerializer().serializeToString(doc));
 }
 // ---------------- REPLACE CONTENT ----------------
 else if (mode === "replaceContent") {
@@ -507,7 +411,6 @@ else if (mode === "replaceContent") {
         var p = paragraphs[i];
         var runs = p.getElementsByTagName("w:r");
         if (isNonContentParagraph(p)) {
-            // Skip this paragraph (heading, title, centered, or large font)
             continue;
         }
         for (var r = 0; r < runs.length; r++) {
@@ -516,7 +419,8 @@ else if (mode === "replaceContent") {
                 t.textContent = addPrefixSuffix(t.textContent, options);
             }
         }
-        applyStyleToRuns(runs, doc, options);
+        var runsArray = Array.from(runs);
+        applyStyleToRuns(runsArray, doc, options);
     }
     zip.file("word/document.xml", new xmldom_1.XMLSerializer().serializeToString(doc));
     console.log("Content replaced!");
