@@ -14,30 +14,32 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var fs = require("fs");
 var pizzip_1 = require("pizzip");
 var xmldom_1 = require("xmldom");
-var mode = "CONTENT"; // "TITLE" | "HEADING" | "CONTENT" | "COMPLETE" | "MAIN"
-// const options: Options = {
-//     headingTexts: ["Executive \"Summary\"", "Modified"],
-//     prefixText: "",
-//     suffixText: "",
-//     color: '49A361',
-//     fontSize: null,
-//     fontFamily: "Calibri",
-//     underline: true,
-//     bold: true,
-//     italic: true,
-//     bgColor: null,
-//     borderColor: "black",
-//     borderSize: 6,
-//     borderStyle: "single",
-//     borderTop: true,
-//     // borderRight: false,
-//     // borderBottom: false,
-//     // borderLeft: false,
-//     highlightColor: "transparent",
-//     contentTexts: [
-//         "It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.",
-//     ],
-// };
+var mode = "MAIN"; // "TITLE" | "HEADING" | "CONTENT" | "COMPLETE" | "COMPLETE_CONTENT" | "MAIN"
+var options = {
+    headingTexts: ["Executive \"Summary\"", "Modified"],
+    // prefixText: "",
+    // suffixText: "",
+    // color: '49A361',
+    // fontSize: 22,
+    // fontFamily: "Calibri",
+    underline: true,
+    // bold: true,
+    // italic: true,
+    // bgColor: "FF0000",
+    // borderColor: "black",
+    borderSize: 6,
+    // borderStyle: "single",
+    // borderTop: true,
+    // borderRight: true,
+    // borderBottom: true,
+    // // borderLeft: false,
+    // highlightColor: "transparent",
+    // alignment: 'center',
+    // lineHeight: 4,
+    contentTexts: [
+        "Date: January 2026"
+    ]
+};
 function addPrefixSuffix(text, opts) {
     return "".concat(opts.prefixText || "").concat(text).concat(opts.suffixText || "");
 }
@@ -49,6 +51,20 @@ function normalizeText(text) {
         .replace(/\u00A0/g, " ")
         .replace(/\s+/g, " ")
         .trim();
+}
+function getOrCreatePPr(p, doc) {
+    for (var i = 0; i < p.childNodes.length; i++) {
+        var n = p.childNodes[i];
+        if (n.nodeName === "w:pPr")
+            return n;
+    }
+    var pPr = doc.createElement("w:pPr");
+    p.insertBefore(pPr, p.firstChild);
+    return pPr;
+}
+function removeChildren(pPr, tag) {
+    var nodes = Array.from(pPr.getElementsByTagName(tag));
+    nodes.forEach(function (n) { return pPr.removeChild(n); });
 }
 function applyStyleToRuns(runs, doc, opts) {
     for (var r = 0; r < runs.length; r++) {
@@ -145,7 +161,18 @@ function applyStyleToRuns(runs, doc, opts) {
             if (opts.bgColor) {
                 try {
                     var p = run.parentNode;
-                    var pPr = p.getElementsByTagName("w:pPr")[0];
+                    var pPr = void 0;
+                    //console.log(p);
+                    try {
+                        let pPro = p.getElementsByTagName("w:pPr")[0];
+                        pPr=pPro.getElementsByTagName("w:p")[0];
+                        console.log("p found in paragraph");
+                    }
+                    catch (e) {
+                        console.log("No pPr in paragraph");
+                        pPr = p.getElementsByTagName("w:hyperlink")[0];
+                        console.log("pPr found in hyperlink");
+                    }
                     if (!pPr) {
                         pPr = doc.createElement("w:pPr");
                         p.insertBefore(pPr, p.firstChild);
@@ -181,10 +208,51 @@ function applyStyleToRuns(runs, doc, opts) {
             var borderOpts = __assign(__assign({}, opts), { borderTop: top_1, borderRight: right, borderBottom: bottom, borderLeft: left });
             var p = run.parentNode;
             try {
+                console.log("Applying border to paragraph catch", p);
                 applyBorder(p, doc, borderOpts);
             }
             catch (e) {
+                console.log("Applying border to paragraph catch", p);
                 applyBorder(rPr, doc, borderOpts);
+            }
+        }
+        if ((opts === null || opts === void 0 ? void 0 : opts.alignment) != null) {
+            var p = run.parentNode;
+            if (!p)
+                return;
+            var pPr = getOrCreatePPr(p, doc);
+            // Remove existing jc (important!)
+            removeChildren(pPr, "w:jc");
+            var jc = doc.createElement("w:jc");
+            var map = {
+                left: "left",
+                center: "center",
+                right: "right",
+                justify: "both"
+            };
+            jc.setAttribute("w:val", map[opts.alignment] || "left");
+            pPr.appendChild(jc);
+        }
+        if ("lineHeight" in opts && opts.lineHeight != null) {
+            try {
+                var p = run.parentNode;
+                var pPr = p.getElementsByTagName("w:pPr")[0];
+                if (!pPr) {
+                    pPr = doc.createElement("w:pPr");
+                    p.insertBefore(pPr, p.firstChild);
+                }
+                var spacing = pPr.getElementsByTagName("w:spacing")[0];
+                if (!spacing) {
+                    spacing = doc.createElement("w:spacing");
+                    pPr.appendChild(spacing);
+                }
+                // opts.lineHeight can be like 1, 1.5, 2
+                var lineTwips = Math.round(240 * opts.lineHeight);
+                spacing.setAttribute("w:line", String(lineTwips));
+                spacing.setAttribute("w:lineRule", "auto");
+            }
+            catch (e) {
+                // optional fallback – usually paragraph spacing never belongs in rPr
             }
         }
     }
@@ -480,6 +548,7 @@ function isNonContentParagraph(p) {
 function updateHeading(inputPath, options) {
     var zip = new pizzip_1.default(fs.readFileSync(inputPath));
     var xml = zip.file("word/document.xml").asText();
+    xml = xml.replace(/\u2019/g, "'");
     var doc = new xmldom_1.DOMParser().parseFromString(xml, "text/xml");
     var paragraphs = doc.getElementsByTagName("w:p");
     var headingTexts = (options.headingTexts || []).map(function (t) {
@@ -528,6 +597,7 @@ function searchUpdate(inputPath, options) {
         throw new Error("contentTexts[] is required for searchReplace mode");
     }
     var xml = zip.file("word/document.xml").asText();
+    xml = xml.replace(/\u2019/g, "'");
     var doc = new xmldom_1.DOMParser().parseFromString(xml, "text/xml");
     var paragraphs = Array.from(doc.getElementsByTagName("w:p"));
     var normalizedSearchTexts = options.contentTexts.map(normalizeText);
@@ -553,6 +623,7 @@ function searchUpdateMain(inputPath, options) {
         throw new Error("contentTexts[] is required for searchReplace mode");
     }
     var xml = zip.file("word/document.xml").asText();
+    xml = xml.replace(/\u2019/g, "'");
     var doc = new xmldom_1.DOMParser().parseFromString(xml, "text/xml");
     var paragraphs = Array.from(doc.getElementsByTagName("w:p"));
     var normalizedSearchTexts = options.contentTexts.map(normalizeText);
@@ -572,16 +643,20 @@ function searchUpdateMain(inputPath, options) {
     fs.writeFileSync(inputPath, zip.generate({ type: "nodebuffer" }));
     console.log("File saved!");
 }
-function replaceUpdate(inputPath, options) {
+function replaceUpdate(inputPath, options, complete) {
+    if (complete === void 0) { complete = false; }
     var zip = new pizzip_1.default(fs.readFileSync(inputPath));
     var xml = zip.file("word/document.xml").asText();
+    xml = xml.replace(/\u2019/g, "'");
     var doc = new xmldom_1.DOMParser().parseFromString(xml, "text/xml");
     var paragraphs = doc.getElementsByTagName("w:p");
     for (var i = 0; i < paragraphs.length; i++) {
         var p = paragraphs[i];
         var runs = p.getElementsByTagName("w:r");
-        if (isNonContentParagraph(p)) {
-            continue;
+        if (!complete) {
+            if (isNonContentParagraph(p)) {
+                continue;
+            }
         }
         for (var r = 0; r < runs.length; r++) {
             var t = runs[r].getElementsByTagName("w:t")[0];
@@ -626,6 +701,9 @@ function processDocument(mode, templatePath, options) {
             searchUpdate(templatePath, options);
             break;
         case "COMPLETE":
+            replaceUpdate(templatePath, options, true);
+            break;
+        case "COMPLETE_CONTENT":
             replaceUpdate(templatePath, options);
             break;
         case "MAIN":
@@ -635,6 +713,6 @@ function processDocument(mode, templatePath, options) {
             break;
     }
 }
-// processDocument(mode, "./templates/2026_01_Precision_AI_UFA_Template1.docx", options)
+processDocument(mode, "./final_result_1.docx", options);
 // fs.writeFileSync("output.docx", zip.generate({ type: "nodebuffer" }) as any);
-console.log("File saved!");
+// console.log("File saved!");

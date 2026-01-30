@@ -29,7 +29,7 @@ interface Options {
 const mode: any = "HEADING"; // "TITLE" | "HEADING" | "CONTENT" | "COMPLETE" | "COMPLETE_CONTENT" | "MAIN"
 
 // const options: Options = {
-//     headingTexts: ["Executive Summary", "Modified"],
+//     headingTexts: ["Executive \"Summary\"", "Modified"],
 //     // prefixText: "",
 //     // suffixText: "",
 //     // color: '49A361',
@@ -38,16 +38,16 @@ const mode: any = "HEADING"; // "TITLE" | "HEADING" | "CONTENT" | "COMPLETE" | "
 //     underline: true,
 //     bold: true,
 //     italic: true,
-//     // bgColor: null,
+//     bgColor: "FF0000",
 //     // borderColor: "black",
-//     borderSize: 6,
+//     // borderSize: 6,
 //     // borderStyle: "single",
 //     // borderTop: true,
-//     borderRight: true,
-//     borderBottom: true,
+//     // borderRight: true,
+//     // borderBottom: true,
 //     // // borderLeft: false,
 //     // highlightColor: "transparent",
-//     alignment: 'center',
+//     // alignment: 'center',
 //     lineHeight: 4,
 //     contentTexts: [
 //         "The concept of vaccination dates back to the late 18th century, when Edward Jenner demonstrated that inoculation with",
@@ -186,7 +186,17 @@ function applyStyleToRuns(runs: any[], doc: any, opts: any): void {
             if (opts.bgColor) {
                 try{
                 const p = run.parentNode;
-                let pPr = p.getElementsByTagName("w:pPr")[0];
+                let pPr:any;
+                
+                try{
+                pPr = p.getElementsByTagName("w:pPr")[0];
+                console.log("pPr found in paragraph");
+                }
+                catch(e){
+                    console.log("No pPr in paragraph");
+                   pPr = p.getElementsByTagName("w:hyperlink")[0]; 
+                   console.log("pPr found in hyperlink");
+                }
                 if (!pPr) {
                     pPr = doc.createElement("w:pPr");
                     p.insertBefore(pPr, p.firstChild);
@@ -846,6 +856,6 @@ function processDocument(
 
 }
 
-// processDocument(mode, "./ff.docx", options)
+// processDocument(mode, "./templates/2026_01_Precision_AI_UFA_Template1.docx", options)
 // fs.writeFileSync("output.docx", zip.generate({ type: "nodebuffer" }) as any);
 // console.log("File saved!");
