@@ -1,9 +1,20 @@
 "use strict";
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 var fs = require("fs");
 var pizzip_1 = require("pizzip");
 var xmldom_1 = require("xmldom");
-var mode = "HEADING"; // "TITLE" | "HEADING" | "CONTENT" | "COMPLETE" | "MAIN"
+var mode = "CONTENT"; // "TITLE" | "HEADING" | "CONTENT" | "COMPLETE" | "MAIN"
 // const options: Options = {
 //     headingTexts: ["Executive \"Summary\"", "Modified"],
 //     prefixText: "",
@@ -16,11 +27,15 @@ var mode = "HEADING"; // "TITLE" | "HEADING" | "CONTENT" | "COMPLETE" | "MAIN"
 //     italic: true,
 //     bgColor: null,
 //     borderColor: "black",
-//     borderSize: 0,
+//     borderSize: 6,
 //     borderStyle: "single",
+//     borderTop: true,
+//     // borderRight: false,
+//     // borderBottom: false,
+//     // borderLeft: false,
 //     highlightColor: "transparent",
 //     contentTexts: [
-//         "Lorem Ipsum", "here"
+//         "It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.",
 //     ],
 // };
 function addPrefixSuffix(text, opts) {
@@ -162,15 +177,42 @@ function applyStyleToRuns(runs, doc, opts) {
             }
         }
         if ("borderSize" in opts && opts.borderSize !== 0) {
+            var _a = resolveBorderSides(opts), top_1 = _a.top, right = _a.right, bottom = _a.bottom, left = _a.left;
+            var borderOpts = __assign(__assign({}, opts), { borderTop: top_1, borderRight: right, borderBottom: bottom, borderLeft: left });
             var p = run.parentNode;
             try {
-                applyBorder(p, doc, opts);
+                applyBorder(p, doc, borderOpts);
             }
             catch (e) {
-                applyBorder(rPr, doc, opts);
+                applyBorder(rPr, doc, borderOpts);
             }
         }
     }
+}
+function resolveBorderSides(opts) {
+    var hasAnySide = opts.borderTop !== undefined ||
+        opts.borderRight !== undefined ||
+        opts.borderBottom !== undefined ||
+        opts.borderLeft !== undefined;
+    // Default values
+    var top = false;
+    var right = false;
+    var bottom = false;
+    var left = false;
+    if (opts.borderSize && opts.borderSize !== 0) {
+        if (!hasAnySide) {
+            // borderSize only → all sides
+            top = right = bottom = left = true;
+        }
+        else {
+            // respect provided sides
+            top = !!opts.borderTop;
+            right = !!opts.borderRight;
+            bottom = !!opts.borderBottom;
+            left = !!opts.borderLeft;
+        }
+    }
+    return { top: top, right: right, bottom: bottom, left: left };
 }
 function applyBorder(p, doc, opts) {
     var pPr = p.getElementsByTagName("w:pPr")[0];
@@ -182,17 +224,34 @@ function applyBorder(p, doc, opts) {
     if (oldBdr) {
         pPr.removeChild(oldBdr);
     }
+    // If no borderSize or zero → do nothing
+    if (!opts.borderSize || opts.borderSize === 0) {
+        return;
+    }
     var pBdr = doc.createElement("w:pBdr");
     pPr.appendChild(pBdr);
-    var sides = ["top", "left", "bottom", "right"];
-    sides.forEach(function (side) {
+    var borderConfig = [
+        { side: "top", enabled: opts.borderTop },
+        { side: "left", enabled: opts.borderLeft },
+        { side: "bottom", enabled: opts.borderBottom },
+        { side: "right", enabled: opts.borderRight }
+    ];
+    console.log("Applying borders:", borderConfig);
+    borderConfig.forEach(function (_a) {
+        var side = _a.side, enabled = _a.enabled;
+        if (!enabled)
+            return;
         var node = doc.createElement("w:".concat(side));
         node.setAttribute("w:val", opts.borderStyle || "single");
-        node.setAttribute("w:sz", (opts.borderSize || 8).toString());
+        node.setAttribute("w:sz", String(opts.borderSize || 8));
         node.setAttribute("w:space", "1");
         node.setAttribute("w:color", opts.borderColor || "000000");
         pBdr.appendChild(node);
     });
+    // If no sides were added, remove empty pBdr
+    if (!pBdr.hasChildNodes()) {
+        pPr.removeChild(pBdr);
+    }
 }
 function isHeadingStyle(p) {
     var pPr = p.getElementsByTagName("w:pPr")[0];

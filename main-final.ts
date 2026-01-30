@@ -16,11 +16,15 @@ interface Options {
     borderColor?: string;
     borderSize?: any;
     borderStyle?: string;
+    borderTop?: boolean;
+    borderRight?: boolean;
+    borderBottom?: boolean;
+    borderLeft?: boolean;
     highlightColor?: string;
     contentTexts?: string[];
 }
 
-const mode: any = "HEADING"; // "TITLE" | "HEADING" | "CONTENT" | "COMPLETE" | "MAIN"
+const mode: any = "CONTENT"; // "TITLE" | "HEADING" | "CONTENT" | "COMPLETE" | "MAIN"
 
 // const options: Options = {
 //     headingTexts: ["Executive \"Summary\"", "Modified"],
@@ -34,11 +38,15 @@ const mode: any = "HEADING"; // "TITLE" | "HEADING" | "CONTENT" | "COMPLETE" | "
 //     italic: true,
 //     bgColor: null,
 //     borderColor: "black",
-//     borderSize: 0,
+//     borderSize: 6,
 //     borderStyle: "single",
+//     borderTop: true,
+//     // borderRight: false,
+//     // borderBottom: false,
+//     // borderLeft: false,
 //     highlightColor: "transparent",
 //     contentTexts: [
-//         "Lorem Ipsum", "here"
+//         "It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.",
 //     ],
 // };
 
@@ -185,18 +193,57 @@ function applyStyleToRuns(runs: any[], doc: any, opts: any): void {
             }
             }
         }
-
         if ("borderSize" in opts && opts.borderSize !== 0) {
+            const { top, right, bottom, left } = resolveBorderSides(opts);
+
+            const borderOpts = {
+                ...opts,
+                borderTop: top,
+                borderRight: right,
+                borderBottom: bottom,
+                borderLeft: left
+            };
+
             const p = run.parentNode;
-            try{
-            applyBorder(p, doc, opts);
-            }
-            catch(e){
-                 applyBorder(rPr, doc, opts);
+
+            try {
+                applyBorder(p, doc, borderOpts);
+            } catch (e) {
+                applyBorder(rPr, doc, borderOpts);
             }
         }
     }
 }
+
+function resolveBorderSides(opts: Options) {
+    const hasAnySide =
+        opts.borderTop !== undefined ||
+        opts.borderRight !== undefined ||
+        opts.borderBottom !== undefined ||
+        opts.borderLeft !== undefined;
+
+    // Default values
+    let top = false;
+    let right = false;
+    let bottom = false;
+    let left = false;
+
+    if (opts.borderSize && opts.borderSize !== 0) {
+        if (!hasAnySide) {
+            // borderSize only → all sides
+            top = right = bottom = left = true;
+        } else {
+            // respect provided sides
+            top = !!opts.borderTop;
+            right = !!opts.borderRight;
+            bottom = !!opts.borderBottom;
+            left = !!opts.borderLeft;
+        }
+    }
+
+    return { top, right, bottom, left };
+}
+
 
 function applyBorder(p: any, doc: any, opts: any): void {
     let pPr = p.getElementsByTagName("w:pPr")[0];
@@ -209,19 +256,40 @@ function applyBorder(p: any, doc: any, opts: any): void {
     if (oldBdr) {
         pPr.removeChild(oldBdr);
     }
-    
+
+    // If no borderSize or zero → do nothing
+    if (!opts.borderSize || opts.borderSize === 0) {
+        return;
+    }
+
     const pBdr = doc.createElement("w:pBdr");
     pPr.appendChild(pBdr);
-    
-    const sides = ["top", "left", "bottom", "right"];
-    sides.forEach((side: any) => {
+
+    const borderConfig = [
+        { side: "top", enabled: opts.borderTop },
+        { side: "left", enabled: opts.borderLeft },
+        { side: "bottom", enabled: opts.borderBottom },
+        { side: "right", enabled: opts.borderRight }
+    ];
+
+    console.log("Applying borders:", borderConfig);
+
+    borderConfig.forEach(({ side, enabled }) => {
+        if (!enabled) return;
+
         const node = doc.createElement(`w:${side}`);
         node.setAttribute("w:val", opts.borderStyle || "single");
-        node.setAttribute("w:sz", (opts.borderSize || 8).toString());
+        node.setAttribute("w:sz", String(opts.borderSize || 8));
         node.setAttribute("w:space", "1");
         node.setAttribute("w:color", opts.borderColor || "000000");
+
         pBdr.appendChild(node);
     });
+
+    // If no sides were added, remove empty pBdr
+    if (!pBdr.hasChildNodes()) {
+        pPr.removeChild(pBdr);
+    }
 }
 
 function isHeadingStyle(p: any): boolean {
