@@ -4,18 +4,25 @@ var fs = require("fs");
 var pizzip_1 = require("pizzip");
 var xmldom_1 = require("xmldom");
 var mode = "HEADING"; // "TITLE" | "HEADING" | "CONTENT" | "COMPLETE" | "MAIN"
-const options = {
-    headingTexts: [
-      "Executive Summary"
-     
-     
-    ],
-
-    color: '#FFFF00',
-    
-    bold: true,
-  
-};
+// const options: Options = {
+//     headingTexts: ["Executive \"Summary\"", "Modified"],
+//     prefixText: "",
+//     suffixText: "",
+//     color: '49A361',
+//     fontSize: null,
+//     fontFamily: "Calibri",
+//     underline: true,
+//     bold: true,
+//     italic: true,
+//     bgColor: null,
+//     borderColor: "black",
+//     borderSize: 0,
+//     borderStyle: "single",
+//     highlightColor: "transparent",
+//     contentTexts: [
+//         "Lorem Ipsum", "here"
+//     ],
+// };
 function addPrefixSuffix(text, opts) {
     return "".concat(opts.prefixText || "").concat(text).concat(opts.suffixText || "");
 }
@@ -569,6 +576,6 @@ function processDocument(mode, templatePath, options) {
             break;
     }
 }
-processDocument(mode, "./ff.docx", options)
+// processDocument(mode, "./templates/2026_01_Precision_AI_UFA_Template1.docx", options)
 // fs.writeFileSync("output.docx", zip.generate({ type: "nodebuffer" }) as any);
 console.log("File saved!");
