@@ -21,33 +21,38 @@ interface Options {
     borderBottom?: boolean;
     borderLeft?: boolean;
     highlightColor?: string;
+    alignment?: string;
+    lineHeight?: any;
     contentTexts?: string[];
 }
 
-const mode: any = "CONTENT"; // "TITLE" | "HEADING" | "CONTENT" | "COMPLETE" | "MAIN"
+const mode: any = "HEADING"; // "TITLE" | "HEADING" | "CONTENT" | "COMPLETE" | "COMPLETE_CONTENT" | "MAIN"
 
 // const options: Options = {
-//     headingTexts: ["Executive \"Summary\"", "Modified"],
-//     prefixText: "",
-//     suffixText: "",
-//     color: '49A361',
-//     fontSize: null,
-//     fontFamily: "Calibri",
+//     headingTexts: ["Executive Summary", "Modified"],
+//     // prefixText: "",
+//     // suffixText: "",
+//     // color: '49A361',
+//     // fontSize: 22,
+//     // fontFamily: "Calibri",
 //     underline: true,
 //     bold: true,
 //     italic: true,
-//     bgColor: null,
-//     borderColor: "black",
+//     // bgColor: null,
+//     // borderColor: "black",
 //     borderSize: 6,
-//     borderStyle: "single",
-//     borderTop: true,
-//     // borderRight: false,
-//     // borderBottom: false,
-//     // borderLeft: false,
-//     highlightColor: "transparent",
+//     // borderStyle: "single",
+//     // borderTop: true,
+//     borderRight: true,
+//     borderBottom: true,
+//     // // borderLeft: false,
+//     // highlightColor: "transparent",
+//     alignment: 'center',
+//     lineHeight: 4,
 //     contentTexts: [
-//         "It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.",
-//     ],
+//         "The concept of vaccination dates back to the late 18th century, when Edward Jenner demonstrated that inoculation with",
+//         "This report addresses key questions including: What are the biological mechanisms behind vaccine-induced immunity?"
+//     ]
 // };
 
 function addPrefixSuffix(text: string, opts: any): string {
@@ -63,6 +68,23 @@ function normalizeText(text: string): string {
         .replace(/\s+/g, " ")
         .trim();
 }
+
+function getOrCreatePPr(p: Element, doc: Document): Element {
+    for (let i = 0; i < p.childNodes.length; i++) {
+        const n = p.childNodes[i];
+        if (n.nodeName === "w:pPr") return n as Element;
+    }
+
+    const pPr = doc.createElement("w:pPr");
+    p.insertBefore(pPr, p.firstChild);
+    return pPr;
+}
+
+function removeChildren(pPr: Element, tag: string) {
+    const nodes = Array.from(pPr.getElementsByTagName(tag));
+    nodes.forEach(n => pPr.removeChild(n));
+}
+
 
 function applyStyleToRuns(runs: any[], doc: any, opts: any): void {
     for (let r = 0; r < runs.length; r++) {
@@ -101,7 +123,7 @@ function applyStyleToRuns(runs: any[], doc: any, opts: any): void {
                 }
             }
         }
-                if (opts.underline!== null && opts.underline!== undefined) {
+        if (opts.underline!== null && opts.underline!== undefined) {
             let u = rPr.getElementsByTagName("w:u")[0];
             if (opts.underline === true) {
             if (!u) {
@@ -210,6 +232,53 @@ function applyStyleToRuns(runs: any[], doc: any, opts: any): void {
                 applyBorder(p, doc, borderOpts);
             } catch (e) {
                 applyBorder(rPr, doc, borderOpts);
+            }
+        }
+        if (opts?.alignment != null) {
+            const p = run.parentNode as Element;
+            if (!p) return;
+
+            const pPr = getOrCreatePPr(p, doc);
+
+            // Remove existing jc (important!)
+            removeChildren(pPr, "w:jc");
+
+            const jc = doc.createElement("w:jc");
+
+            const map: Record<string, string> = {
+                left: "left",
+                center: "center",
+                right: "right",
+                justify: "both"
+            };
+
+            jc.setAttribute("w:val", map[opts.alignment] || "left");
+            pPr.appendChild(jc);
+        }
+
+        if ("lineHeight" in opts && opts.lineHeight != null) {
+            try {
+                const p = run.parentNode as Element;
+
+                let pPr = p.getElementsByTagName("w:pPr")[0];
+                if (!pPr) {
+                    pPr = doc.createElement("w:pPr");
+                    p.insertBefore(pPr, p.firstChild);
+                }
+
+                let spacing = pPr.getElementsByTagName("w:spacing")[0];
+                if (!spacing) {
+                    spacing = doc.createElement("w:spacing");
+                    pPr.appendChild(spacing);
+                }
+
+                // opts.lineHeight can be like 1, 1.5, 2
+                const lineTwips = Math.round(240 * opts.lineHeight);
+
+                spacing.setAttribute("w:line", String(lineTwips));
+                spacing.setAttribute("w:lineRule", "auto");
+            } catch (e) {
+                // optional fallback – usually paragraph spacing never belongs in rPr
             }
         }
     }
@@ -568,7 +637,8 @@ function isNonContentParagraph(p: any): boolean {
 
 function updateHeading(inputPath:any,options:any): void {
     const zip = new PizZip(fs.readFileSync(inputPath));
-    const xml = zip.file("word/document.xml")!.asText();
+    let xml = zip.file("word/document.xml")!.asText();
+    xml = xml.replace(/\u2019/g, "'");
     const doc = new DOMParser().parseFromString(xml, "text/xml");
     const paragraphs = doc.getElementsByTagName("w:p");
     const headingTexts = (options.headingTexts || []).map((t: any) => {
@@ -629,8 +699,10 @@ function searchUpdate(inputPath:any,options:any): void {
         throw new Error("contentTexts[] is required for searchReplace mode");
     }
     
-    const xml = zip.file("word/document.xml")!.asText();
+    let xml = zip.file("word/document.xml")!.asText();
+    xml = xml.replace(/\u2019/g, "'");
     const doc = new DOMParser().parseFromString(xml, "text/xml");
+    
     const paragraphs = Array.from(doc.getElementsByTagName("w:p"));
     const normalizedSearchTexts = options.contentTexts!.map(normalizeText);
     
@@ -660,7 +732,8 @@ function searchUpdateMain(inputPath:any,options:any): void {
         throw new Error("contentTexts[] is required for searchReplace mode");
     }
     
-    const xml = zip.file("word/document.xml")!.asText();
+    let xml = zip.file("word/document.xml")!.asText();
+    xml = xml.replace(/\u2019/g, "'");
     const doc = new DOMParser().parseFromString(xml, "text/xml");
     const paragraphs = Array.from(doc.getElementsByTagName("w:p"));
     const normalizedSearchTexts = options.contentTexts!.map(normalizeText);
@@ -686,9 +759,10 @@ function searchUpdateMain(inputPath:any,options:any): void {
 console.log("File saved!");
 }
 
-function replaceUpdate(inputPath:any,options:any): void {
+function replaceUpdate(inputPath:any,options:any, complete: any = false): void {
     const zip = new PizZip(fs.readFileSync(inputPath));
-    const xml = zip.file("word/document.xml")!.asText();
+    let xml = zip.file("word/document.xml")!.asText();
+    xml = xml.replace(/\u2019/g, "'");
     const doc = new DOMParser().parseFromString(xml, "text/xml");
     const paragraphs = doc.getElementsByTagName("w:p");
     
@@ -696,8 +770,10 @@ function replaceUpdate(inputPath:any,options:any): void {
         const p = paragraphs[i];
         const runs = p.getElementsByTagName("w:r");
         
-        if (isNonContentParagraph(p)) {
-            continue;
+        if(!complete){
+            if (isNonContentParagraph(p)) {
+                continue;
+            }
         }
         
         for (let r = 0; r < runs.length; r++) {
@@ -753,6 +829,10 @@ function processDocument(
             break;
 
         case "COMPLETE":
+            replaceUpdate(templatePath, options, true);
+            break;
+
+        case "COMPLETE_CONTENT":
             replaceUpdate(templatePath, options);
             break;
 
@@ -766,6 +846,6 @@ function processDocument(
 
 }
 
-// processDocument(mode, "./templates/2026_01_Precision_AI_UFA_Template1.docx", options)
+// processDocument(mode, "./ff.docx", options)
 // fs.writeFileSync("output.docx", zip.generate({ type: "nodebuffer" }) as any);
-console.log("File saved!");
+// console.log("File saved!");
