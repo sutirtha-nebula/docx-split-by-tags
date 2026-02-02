@@ -38,10 +38,10 @@ const options: Options = {
     underline: true,
     bold: true,
     italic: true,
-    bgColor: "FF0000",
-    // borderColor: "black",
-    // borderSize: 6,
-    // borderStyle: "single",
+    // bgColor: "FF0000",
+    borderColor: "FF0000",
+    borderSize: 12,
+    // borderStyle: "dotted",
     // borderTop: true,
     // borderRight: true,
     // borderBottom: true,
@@ -50,8 +50,8 @@ const options: Options = {
     // alignment: 'center',
     // lineHeight: 4,
     contentTexts: [
-        "The concept of vaccination dates back to the late 18th century, when Edward Jenner demonstrated that inoculation with",
-        "This report addresses key questions including: What are the biological mechanisms behind vaccine-induced immunity?"
+        "The COVID-19 pandemic, caused by the SARS-CoV-2 virus, has been one of the most significant global health crises in modern history. In response, the rapid development and deployment of COVID-19 vaccines marked an unprecedented achievement in medical science, saving millions",
+        "Date: January 2026"
     ]
 };
 
@@ -85,7 +85,7 @@ function removeChildren(pPr: Element, tag: string) {
     nodes.forEach(n => pPr.removeChild(n));
 }
 
-function applyBorderColor(run:any, rPr: any, opts:any, doc:any): void {
+function applyBorderColor(run: any, rPr: any, opts: any, doc: any): void {
     const { top, right, bottom, left } = resolveBorderSides(opts);
 
     const borderOpts = {
@@ -93,7 +93,8 @@ function applyBorderColor(run:any, rPr: any, opts:any, doc:any): void {
         borderTop: top,
         borderRight: right,
         borderBottom: bottom,
-        borderLeft: left
+        borderLeft: left,
+        borderStyle: opts.borderStyle || "single"  // default to "single" if not provided
     };
 
     const p = run.parentNode;
@@ -104,6 +105,7 @@ function applyBorderColor(run:any, rPr: any, opts:any, doc:any): void {
         applyBorder(rPr, doc, borderOpts);
     }
 }
+
 
 
 function applyStyleToRuns(runs: any[], doc: any, opts: any): void {
@@ -366,7 +368,7 @@ function applyBorder(p: any, doc: any, opts: any): void {
         if (!enabled) return;
 
         const node = doc.createElement(`w:${side}`);
-        node.setAttribute("w:val", opts.borderStyle || "single");
+        node.setAttribute("w:val", opts.borderStyle);
         node.setAttribute("w:sz", String(opts.borderSize || 8));
         node.setAttribute("w:space", "1");
         node.setAttribute("w:color", opts.borderColor || "000000");
@@ -865,6 +867,6 @@ function processDocument(
 
 }
 
-processDocument(mode, "./templates/2026_01_Precision_AI_UFA_Template.docx", options)
+processDocument(mode, "./ff.docx", options)
 // fs.writeFileSync("output.docx", zip.generate({ type: "nodebuffer" }) as any);
 // console.log("File saved!");
