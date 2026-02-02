@@ -28,32 +28,32 @@ interface Options {
 
 const mode: any = "HEADING"; // "TITLE" | "HEADING" | "CONTENT" | "COMPLETE" | "COMPLETE_CONTENT" | "MAIN"
 
-// const options: Options = {
-//     headingTexts: ["Executive \"Summary\"", "Modified"],
-//     // prefixText: "",
-//     // suffixText: "",
-//     // color: '49A361',
-//     // fontSize: 22,
-//     // fontFamily: "Calibri",
-//     underline: true,
-//     bold: true,
-//     italic: true,
-//     bgColor: "FF0000",
-//     // borderColor: "black",
-//     // borderSize: 6,
-//     // borderStyle: "single",
-//     // borderTop: true,
-//     // borderRight: true,
-//     // borderBottom: true,
-//     // // borderLeft: false,
-//     // highlightColor: "transparent",
-//     // alignment: 'center',
-//     lineHeight: 4,
-//     contentTexts: [
-//         "The concept of vaccination dates back to the late 18th century, when Edward Jenner demonstrated that inoculation with",
-//         "This report addresses key questions including: What are the biological mechanisms behind vaccine-induced immunity?"
-//     ]
-// };
+const options: Options = {
+    headingTexts: ["Executive Summary", "Modified"],
+    // prefixText: "",
+    // suffixText: "",
+    // color: '49A361',
+    // fontSize: 22,
+    // fontFamily: "Calibri",
+    underline: true,
+    bold: true,
+    italic: true,
+    bgColor: "FF0000",
+    // borderColor: "black",
+    // borderSize: 6,
+    // borderStyle: "single",
+    // borderTop: true,
+    // borderRight: true,
+    // borderBottom: true,
+    // // borderLeft: false,
+    // highlightColor: "transparent",
+    // alignment: 'center',
+    // lineHeight: 4,
+    contentTexts: [
+        "The concept of vaccination dates back to the late 18th century, when Edward Jenner demonstrated that inoculation with",
+        "This report addresses key questions including: What are the biological mechanisms behind vaccine-induced immunity?"
+    ]
+};
 
 function addPrefixSuffix(text: string, opts: any): string {
     return `${opts.prefixText || ""}${text}${opts.suffixText || ""}`;
@@ -83,6 +83,26 @@ function getOrCreatePPr(p: Element, doc: Document): Element {
 function removeChildren(pPr: Element, tag: string) {
     const nodes = Array.from(pPr.getElementsByTagName(tag));
     nodes.forEach(n => pPr.removeChild(n));
+}
+
+function applyBorderColor(run:any, rPr: any, opts:any, doc:any): void {
+    const { top, right, bottom, left } = resolveBorderSides(opts);
+
+    const borderOpts = {
+        ...opts,
+        borderTop: top,
+        borderRight: right,
+        borderBottom: bottom,
+        borderLeft: left
+    };
+
+    const p = run.parentNode;
+
+    try {
+        applyBorder(p, doc, borderOpts);
+    } catch (e) {
+        applyBorder(rPr, doc, borderOpts);
+    }
 }
 
 
@@ -184,65 +204,54 @@ function applyStyleToRuns(runs: any[], doc: any, opts: any): void {
 
         if ("bgColor" in opts && opts.bgColor !== null) {
             if (opts.bgColor) {
-                try{
-                const p = run.parentNode;
-                let pPr:any;
-                
-                try{
-                pPr = p.getElementsByTagName("w:pPr")[0];
-                console.log("pPr found in paragraph");
+                try {
+                    const p = run.parentNode;
+                    let pPr: any;
+
+                    try {
+                        pPr = p.getElementsByTagName("w:pPr")[0];
+                        console.log("pPr found in paragraph");
+                    } catch (e) {
+                        console.log("No pPr in paragraph");
+                        pPr = p.getElementsByTagName("w:hyperlink")[0];
+                        console.log("pPr found in hyperlink");
+                    }
+
+                    if (!pPr) {
+                        pPr = doc.createElement("w:pPr");
+                        p.insertBefore(pPr, p.firstChild);
+                    }
+
+                    let shd = pPr.getElementsByTagName("w:shd")[0];
+                    if (!shd) {
+                        shd = doc.createElement("w:shd");
+                        pPr.appendChild(shd);
+                    }
+                    shd.setAttribute("w:fill", opts.bgColor);
+
+                    // Instead of manually setting shading here, call your function:
+                    applyBorderColor(run, rPr, {borderColor: opts.bgColor, borderSize: 6}, doc);
+                } catch (e) {
+                    let shd = rPr.getElementsByTagName("w:shd")[0];
+                    if (!shd) {
+                        shd = doc.createElement("w:shd");
+                        rPr.appendChild(shd);
+                    }
+                    if (opts.highlightColor === "transparent") {
+                        shd.setAttribute("w:val", "clear");
+                        shd.setAttribute("w:color", "auto");
+                        shd.setAttribute("w:fill", "auto");
+                        rPr.appendChild(shd);
+                    } else {
+                        shd.setAttribute("w:fill", opts.highlightColor);
+                        rPr.appendChild(shd);
+                    }
                 }
-                catch(e){
-                    console.log("No pPr in paragraph");
-                   pPr = p.getElementsByTagName("w:hyperlink")[0]; 
-                   console.log("pPr found in hyperlink");
-                }
-                if (!pPr) {
-                    pPr = doc.createElement("w:pPr");
-                    p.insertBefore(pPr, p.firstChild);
-                }
-                let shd = pPr.getElementsByTagName("w:shd")[0];
-                if (!shd) {
-                    shd = doc.createElement("w:shd");
-                    pPr.appendChild(shd);
-                }
-                shd.setAttribute("w:fill", opts.bgColor);
-            } catch (e) {
-                 let shd = rPr.getElementsByTagName("w:shd")[0];
-            if (!shd) {
-                shd = doc.createElement("w:shd");
-                rPr.appendChild(shd);
-            }
-            if (opts.highlightColor === "transparent") {
-                shd.setAttribute("w:val", "clear");
-                shd.setAttribute("w:color", "auto");
-                shd.setAttribute("w:fill", "auto");
-                rPr.appendChild(shd);
-            } else {
-                shd.setAttribute("w:fill", opts.highlightColor);
-                rPr.appendChild(shd);
-            }
-            }
             }
         }
+
         if ("borderSize" in opts && opts.borderSize !== 0) {
-            const { top, right, bottom, left } = resolveBorderSides(opts);
-
-            const borderOpts = {
-                ...opts,
-                borderTop: top,
-                borderRight: right,
-                borderBottom: bottom,
-                borderLeft: left
-            };
-
-            const p = run.parentNode;
-
-            try {
-                applyBorder(p, doc, borderOpts);
-            } catch (e) {
-                applyBorder(rPr, doc, borderOpts);
-            }
+           applyBorderColor(run, rPr, opts, doc);
         }
         if (opts?.alignment != null) {
             const p = run.parentNode as Element;
@@ -698,7 +707,7 @@ function updateHeading(inputPath:any,options:any): void {
     }
     
     zip.file("word/document.xml", new XMLSerializer().serializeToString(doc));
-    fs.writeFileSync(inputPath, zip.generate({ type: "nodebuffer" }) as any);
+    fs.writeFileSync('output.docx', zip.generate({ type: "nodebuffer" }) as any);
 console.log("File saved!");
     console.log("Headings updated!");
 }
@@ -733,7 +742,7 @@ function searchUpdate(inputPath:any,options:any): void {
     }
     
     zip.file("word/document.xml", new XMLSerializer().serializeToString(doc));
-    fs.writeFileSync(inputPath, zip.generate({ type: "nodebuffer" }) as any);
+    fs.writeFileSync('output.docx', zip.generate({ type: "nodebuffer" }) as any);
 console.log("File saved!");
 }
 function searchUpdateMain(inputPath:any,options:any): void {
@@ -765,7 +774,7 @@ function searchUpdateMain(inputPath:any,options:any): void {
     }
     
     zip.file("word/document.xml", new XMLSerializer().serializeToString(doc));
-    fs.writeFileSync(inputPath, zip.generate({ type: "nodebuffer" }) as any);
+    fs.writeFileSync('output.docx', zip.generate({ type: "nodebuffer" }) as any);
 console.log("File saved!");
 }
 
@@ -798,7 +807,7 @@ function replaceUpdate(inputPath:any,options:any, complete: any = false): void {
     }
     
     zip.file("word/document.xml", new XMLSerializer().serializeToString(doc));
-    fs.writeFileSync(inputPath, zip.generate({ type: "nodebuffer" }) as any);
+    fs.writeFileSync('output.docx', zip.generate({ type: "nodebuffer" }) as any);
 console.log("File saved!");
     console.log("Content replaced!");
 }
@@ -856,6 +865,6 @@ function processDocument(
 
 }
 
-// processDocument(mode, "./templates/2026_01_Precision_AI_UFA_Template1.docx", options)
+processDocument(mode, "./templates/2026_01_Precision_AI_UFA_Template.docx", options)
 // fs.writeFileSync("output.docx", zip.generate({ type: "nodebuffer" }) as any);
 // console.log("File saved!");
