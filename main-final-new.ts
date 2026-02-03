@@ -45,85 +45,85 @@ interface Options {
 
 const mode: any = "TABLE"; // "TITLE" | "HEADING" | "CONTENT" | "COMPLETE" | "COMPLETE_CONTENT" | "MAIN" | "TABLE"
 
-const options: Options = {
-    headingTexts: ["Table of Contents", "Introduction", "Executive “Summary”", "Core Definitions", "Battery Technologies", "Structural Architecture"],
-    // prefixText: "",
-    // suffixText: "",
-    color: '#00FF00',
-    // fontSize: 22,
-    fontFamily: "Caveat",
-    underline: true,
-    bold: true,
-    italic: true,
-    bgColor: "#FF0000",
-    borderColor: "#FFFFFF",
-    borderSize: 12,
-    borderStyle: "dotted",
-    borderTop: true,
-    borderRight: true,
-    borderBottom: true,
-    borderLeft: true,
-    // highlightColor: "#000000",
-    alignment: 'center',
-    lineHeight: 2,
-    verticalAlign: "bottom",
-    // rowHeight: 2,
-    tableTargets: [
-        // {
-        //     tableIndex: 0,
-        //     header: true,
-        //     content: false,
-        //     footer: false,
-        //     headerRule: "firstRow"
-        // },
-        // {
-        //     tableIndex: 1,
-        //     header: true,
-        //     content: true,
-        //     footer: false,
-        //     headerRule: "firstRow"
-        // },
-        {
-            tableIndex: 2,
-            header: false,
-            content: true,
-            footer: false,
-            headerRule: "firstRow",
-            footerRule: "lastRow"
-        },
-        // {
-        //     tableIndex: 3,
-        //     header: false,
-        //     content: false,
-        //     footer: true,
-        //     headerRule: "firstRow",
-        //     footerRule: "lastRow"
-        // }
-        // {
-        //     tableIndex: 4,
-        //     header: false,
-        //     content: true,
-        //     footer: false,
-        //     headerRule: "firstRow",
-        //     footerRule: "lastRow"
-        // },
-        // {
-        //     tableIndex: 5,
-        //     header: true,
-        //     content: true,
-        //     footer: true,
-        //     headerRule: "firstRow",
-        //     footerRule: "lastRow"
-        // }
-    ],
-    contentTexts: [
-        "Date: January 2026",
-        "This document contains proprietary information about electric vehicle battery technologies. Distribution is intended for educational and",
-        "The battery represents approximately 30-40% of an electric vehicle's total cost and fundamentally determines its range, charging speed, longevity, and environmental footprint. Understanding the trajectory of battery technology is therefore essential for EV owners and prospective buyers making purchasing decisions, automotive industry professionals planning product strategies, sustainability stakeholders evaluating environmental impacts, researchers and students studying energy storage systems, and policy makers crafting regulations that will shape the industry's future.",
-        "Lithium-ion batteries dominate the current EV market, representing over 95% of electric vehicle energy storage. These batteries store energy through the movement of lithium ions between electrodes during charging and discharging.",
-        "Gravimetric Energy Density (Wh/kg): Energy per unit mass—critical for vehicle weight and efficiency"
-    ]
-};
+// const options: Options = {
+//     headingTexts: ["Table of Contents", "Introduction", "Executive “Summary”", "Core Definitions", "Battery Technologies", "Structural Architecture"],
+//     // prefixText: "",
+//     // suffixText: "",
+//     color: '#00FF00',
+//     // fontSize: 22,
+//     fontFamily: "Caveat",
+//     underline: true,
+//     bold: true,
+//     italic: true,
+//     bgColor: "#FF0000",
+//     borderColor: "#FFFFFF",
+//     borderSize: 12,
+//     borderStyle: "dotted",
+//     borderTop: true,
+//     borderRight: true,
+//     borderBottom: true,
+//     borderLeft: true,
+//     // highlightColor: "#000000",
+//     alignment: 'center',
+//     lineHeight: 2,
+//     verticalAlign: "bottom",
+//     // rowHeight: 2,
+//     tableTargets: [
+//         // {
+//         //     tableIndex: 0,
+//         //     header: true,
+//         //     content: false,
+//         //     footer: false,
+//         //     headerRule: "firstRow"
+//         // },
+//         // {
+//         //     tableIndex: 1,
+//         //     header: true,
+//         //     content: true,
+//         //     footer: false,
+//         //     headerRule: "firstRow"
+//         // },
+//         {
+//             tableIndex: 2,
+//             header: false,
+//             content: true,
+//             footer: false,
+//             headerRule: "firstRow",
+//             footerRule: "lastRow"
+//         },
+//         // {
+//         //     tableIndex: 3,
+//         //     header: false,
+//         //     content: false,
+//         //     footer: true,
+//         //     headerRule: "firstRow",
+//         //     footerRule: "lastRow"
+//         // }
+//         // {
+//         //     tableIndex: 4,
+//         //     header: false,
+//         //     content: true,
+//         //     footer: false,
+//         //     headerRule: "firstRow",
+//         //     footerRule: "lastRow"
+//         // },
+//         // {
+//         //     tableIndex: 5,
+//         //     header: true,
+//         //     content: true,
+//         //     footer: true,
+//         //     headerRule: "firstRow",
+//         //     footerRule: "lastRow"
+//         // }
+//     ],
+//     contentTexts: [
+//         "Date: January 2026",
+//         "This document contains proprietary information about electric vehicle battery technologies. Distribution is intended for educational and",
+//         "The battery represents approximately 30-40% of an electric vehicle's total cost and fundamentally determines its range, charging speed, longevity, and environmental footprint. Understanding the trajectory of battery technology is therefore essential for EV owners and prospective buyers making purchasing decisions, automotive industry professionals planning product strategies, sustainability stakeholders evaluating environmental impacts, researchers and students studying energy storage systems, and policy makers crafting regulations that will shape the industry's future.",
+//         "Lithium-ion batteries dominate the current EV market, representing over 95% of electric vehicle energy storage. These batteries store energy through the movement of lithium ions between electrodes during charging and discharging.",
+//         "Gravimetric Energy Density (Wh/kg): Energy per unit mass—critical for vehicle weight and efficiency"
+//     ]
+// };
 
 function addPrefixSuffix(text: string, opts: any): string {
     return `${opts.prefixText || ""}${text}${opts.suffixText || ""}`;
@@ -805,7 +805,7 @@ function updateHeading(inputPath: any, options: any): void {
     }
 
     zip.file("word/document.xml", new XMLSerializer().serializeToString(doc));
-    fs.writeFileSync('output.docx', zip.generate({type: "nodebuffer"}) as any);
+    fs.writeFileSync(inputPath, zip.generate({type: "nodebuffer"}) as any);
     console.log("File saved!");
     console.log("Headings updated!");
 }
@@ -840,7 +840,7 @@ function searchUpdate(inputPath: any, options: any): void {
     }
 
     zip.file("word/document.xml", new XMLSerializer().serializeToString(doc));
-    fs.writeFileSync('output.docx', zip.generate({type: "nodebuffer"}) as any);
+    fs.writeFileSync(inputPath, zip.generate({type: "nodebuffer"}) as any);
     console.log("File saved!");
 }
 
@@ -873,7 +873,7 @@ function searchUpdateMain(inputPath: any, options: any): void {
     }
 
     zip.file("word/document.xml", new XMLSerializer().serializeToString(doc));
-    fs.writeFileSync('output.docx', zip.generate({type: "nodebuffer"}) as any);
+    fs.writeFileSync(inputPath, zip.generate({type: "nodebuffer"}) as any);
     console.log("File saved!");
 }
 
@@ -906,7 +906,7 @@ function replaceUpdate(inputPath: any, options: any, complete: any = false): voi
     }
 
     zip.file("word/document.xml", new XMLSerializer().serializeToString(doc));
-    fs.writeFileSync('output.docx', zip.generate({type: "nodebuffer"}) as any);
+    fs.writeFileSync(inputPath, zip.generate({type: "nodebuffer"}) as any);
     console.log("File saved!");
     console.log("Content replaced!");
 }
@@ -1017,7 +1017,7 @@ function searchUpdateTable(inputPath: string, options: Options) {
     zip.file("word/document.xml", new XMLSerializer().serializeToString(doc));
 
 
-    fs.writeFileSync('output.docx', zip.generate({type: "nodebuffer"}));
+    fs.writeFileSync(inputPath, zip.generate({type: "nodebuffer"}));
 
 
 }
@@ -1258,6 +1258,6 @@ function tableContainsText(tbl: Element, text: string): boolean {
 //     });
 // }
 
-processDocument(mode, "./final_result_1.docx", options)
+// processDocument(mode, "./final_result_1.docx", options)
 // fs.writeFileSync("output.docx", zip.generate({ type: "nodebuffer" }) as any);
 // console.log("File saved!");
