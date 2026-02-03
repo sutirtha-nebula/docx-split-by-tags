@@ -46,51 +46,51 @@ interface Options {
 const mode: any = "TABLE"; // "TITLE" | "HEADING" | "CONTENT" | "COMPLETE" | "COMPLETE_CONTENT" | "MAIN" | "TABLE"
 
 const options: Options = {
-    headingTexts: ["Executive “Summary”", "Modified"],
+    headingTexts: ["Table of Contents", "Introduction", "Executive “Summary”", "Core Definitions", "Battery Technologies", "Structural Architecture"],
     // prefixText: "",
     // suffixText: "",
-    color: '#0000FF',
+    color: '#00FF00',
     // fontSize: 22,
-    fontFamily: "Calibri",
+    fontFamily: "Caveat",
     underline: true,
-    // bold: true,
-    // italic: true,
+    bold: true,
+    italic: true,
     bgColor: "#FF0000",
-    // borderColor: "FF0000",
-    borderSize: 6,
+    borderColor: "#FFFFFF",
+    borderSize: 12,
     borderStyle: "dotted",
-    // borderTop: true,
-    // borderRight: true,
-    // borderBottom: true,
-    // // borderLeft: false,
-    // highlightColor: "transparent",
-    // alignment: 'center',
-    // lineHeight: 4,
-    verticalAlign: "top",
-    rowHeight: 2,
+    borderTop: true,
+    borderRight: true,
+    borderBottom: true,
+    borderLeft: true,
+    // highlightColor: "#000000",
+    alignment: 'center',
+    lineHeight: 2,
+    verticalAlign: "bottom",
+    // rowHeight: 2,
     tableTargets: [
-        {
-            tableIndex: 0,
-            header: true,
-            content: false,
-            footer: false,
-            headerRule: "firstRow"
-        },
-        {
-            tableIndex: 1,
-            header: true,
-            content: true,
-            footer: false,
-            headerRule: "firstRow"
-        },
         // {
-        //     tableIndex: 6,
-        //     header: false,
+        //     tableIndex: 0,
+        //     header: true,
+        //     content: false,
+        //     footer: false,
+        //     headerRule: "firstRow"
+        // },
+        // {
+        //     tableIndex: 1,
+        //     header: true,
         //     content: true,
         //     footer: false,
-        //     headerRule: "firstRow",
-        //     footerRule: "lastRow"
+        //     headerRule: "firstRow"
         // },
+        {
+            tableIndex: 2,
+            header: false,
+            content: true,
+            footer: false,
+            headerRule: "firstRow",
+            footerRule: "lastRow"
+        },
         // {
         //     tableIndex: 3,
         //     header: false,
@@ -99,11 +99,29 @@ const options: Options = {
         //     headerRule: "firstRow",
         //     footerRule: "lastRow"
         // }
+        // {
+        //     tableIndex: 4,
+        //     header: false,
+        //     content: true,
+        //     footer: false,
+        //     headerRule: "firstRow",
+        //     footerRule: "lastRow"
+        // },
+        // {
+        //     tableIndex: 5,
+        //     header: true,
+        //     content: true,
+        //     footer: true,
+        //     headerRule: "firstRow",
+        //     footerRule: "lastRow"
+        // }
     ],
     contentTexts: [
-        "The COVID-19 pandemic, caused by the SARS-CoV-2 virus, has been one of the most significant global health crises in modern history. In response, the rapid development and deployment of COVID-19 vaccines marked an unprecedented achievement in medical science, saving millions",
-        "Date: December 26, 2025",
-        "An electric vehicle is a vehicle powered by one or more electric motors using energy stored in rechargeable batteries. EVs encompass several categories:"
+        "Date: January 2026",
+        "This document contains proprietary information about electric vehicle battery technologies. Distribution is intended for educational and",
+        "The battery represents approximately 30-40% of an electric vehicle's total cost and fundamentally determines its range, charging speed, longevity, and environmental footprint. Understanding the trajectory of battery technology is therefore essential for EV owners and prospective buyers making purchasing decisions, automotive industry professionals planning product strategies, sustainability stakeholders evaluating environmental impacts, researchers and students studying energy storage systems, and policy makers crafting regulations that will shape the industry's future.",
+        "Lithium-ion batteries dominate the current EV market, representing over 95% of electric vehicle energy storage. These batteries store energy through the movement of lithium ions between electrodes during charging and discharging.",
+        "Gravimetric Energy Density (Wh/kg): Energy per unit mass—critical for vehicle weight and efficiency"
     ]
 };
 
@@ -999,7 +1017,7 @@ function searchUpdateTable(inputPath: string, options: Options) {
     zip.file("word/document.xml", new XMLSerializer().serializeToString(doc));
 
 
-    fs.writeFileSync("output.docx", zip.generate({type: "nodebuffer"}));
+    fs.writeFileSync('output.docx', zip.generate({type: "nodebuffer"}));
 
 
 }
@@ -1182,63 +1200,63 @@ function tableContainsText(tbl: Element, text: string): boolean {
     return normalizeText(fullText).includes(normalizeText(text));
 }
 
-function removeTableBorders(tbl: Element, doc: Document) {
-    let tblPr = tbl.getElementsByTagName("w:tblPr")[0] as Element | undefined;
+// function removeTableBorders(tbl: Element, doc: Document) {
+//     let tblPr = tbl.getElementsByTagName("w:tblPr")[0] as Element | undefined;
 
-    if (!tblPr) {
-        tblPr = doc.createElement("w:tblPr");
-        tbl.insertBefore(tblPr, tbl.firstChild);
-    }
+//     if (!tblPr) {
+//         tblPr = doc.createElement("w:tblPr");
+//         tbl.insertBefore(tblPr, tbl.firstChild);
+//     }
 
-    let tblBorders = tblPr.getElementsByTagName("w:tblBorders")[0] as Element | undefined;
+//     let tblBorders = tblPr.getElementsByTagName("w:tblBorders")[0] as Element | undefined;
 
-    if (!tblBorders) {
-        tblBorders = doc.createElement("w:tblBorders");
-        tblPr.appendChild(tblBorders);
-    }
+//     if (!tblBorders) {
+//         tblBorders = doc.createElement("w:tblBorders");
+//         tblPr.appendChild(tblBorders);
+//     }
 
-    const borderTags = ["w:top", "w:left", "w:bottom", "w:right", "w:insideH", "w:insideV"];
+//     const borderTags = ["w:top", "w:left", "w:bottom", "w:right", "w:insideH", "w:insideV"];
 
-    borderTags.forEach((tag) => {
-        let border = tblBorders.getElementsByTagName(tag)[0] as Element | undefined;
-        if (!border) {
-            border = doc.createElement(tag);
-            tblBorders.appendChild(border);
-        }
-        border.setAttribute("w:val", "nil");
-    });
-}
+//     borderTags.forEach((tag) => {
+//         let border = tblBorders.getElementsByTagName(tag)[0] as Element | undefined;
+//         if (!border) {
+//             border = doc.createElement(tag);
+//             tblBorders.appendChild(border);
+//         }
+//         border.setAttribute("w:val", "nil");
+//     });
+// }
 
-function addTableBorders(tbl: Element, doc: Document) {
-    let tblPr = tbl.getElementsByTagName("w:tblPr")[0] as Element | undefined;
+// function addTableBorders(tbl: Element, doc: Document) {
+//     let tblPr = tbl.getElementsByTagName("w:tblPr")[0] as Element | undefined;
 
-    if (!tblPr) {
-        tblPr = doc.createElement("w:tblPr");
-        tbl.insertBefore(tblPr, tbl.firstChild);
-    }
+//     if (!tblPr) {
+//         tblPr = doc.createElement("w:tblPr");
+//         tbl.insertBefore(tblPr, tbl.firstChild);
+//     }
 
-    let tblBorders = tblPr.getElementsByTagName("w:tblBorders")[0] as Element | undefined;
+//     let tblBorders = tblPr.getElementsByTagName("w:tblBorders")[0] as Element | undefined;
 
-    if (!tblBorders) {
-        tblBorders = doc.createElement("w:tblBorders");
-        tblPr.appendChild(tblBorders);
-    }
+//     if (!tblBorders) {
+//         tblBorders = doc.createElement("w:tblBorders");
+//         tblPr.appendChild(tblBorders);
+//     }
 
-    const borderTags = ["w:top", "w:left", "w:bottom", "w:right", "w:insideH", "w:insideV"];
+//     const borderTags = ["w:top", "w:left", "w:bottom", "w:right", "w:insideH", "w:insideV"];
 
-    borderTags.forEach((tag) => {
-        let border = tblBorders.getElementsByTagName(tag)[0] as Element | undefined;
-        if (!border) {
-            border = doc.createElement(tag);
-            tblBorders.appendChild(border);
-        }
+//     borderTags.forEach((tag) => {
+//         let border = tblBorders.getElementsByTagName(tag)[0] as Element | undefined;
+//         if (!border) {
+//             border = doc.createElement(tag);
+//             tblBorders.appendChild(border);
+//         }
 
-        border.setAttribute("w:val", "single");
-        border.setAttribute("w:sz", "4");
-        border.setAttribute("w:space", "0");
-        border.setAttribute("w:color", "000000");
-    });
-}
+//         border.setAttribute("w:val", "single");
+//         border.setAttribute("w:sz", "4");
+//         border.setAttribute("w:space", "0");
+//         border.setAttribute("w:color", "000000");
+//     });
+// }
 
 processDocument(mode, "./final_result_1.docx", options)
 // fs.writeFileSync("output.docx", zip.generate({ type: "nodebuffer" }) as any);
