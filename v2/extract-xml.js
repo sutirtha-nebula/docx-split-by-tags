@@ -2,7 +2,7 @@ const fs = require("fs");
 const PizZip = require("pizzip");
 
 // Files
-const INPUT_DOCX = "./final_result.docx";
+const INPUT_DOCX = "./output.docx";
 const OUTPUT_XML = "document.xml";
 
 console.log("Extracting document.xml...");

@@ -43,7 +43,7 @@ interface Options {
     tableTargets?: TableTarget[];
 }
 
-const mode: any = "CONTENT"; // "TITLE" | "HEADING" | "CONTENT" | "COMPLETE" | "COMPLETE_CONTENT" | "MAIN" | "TABLE"
+const mode: any = "THEME"; // "TITLE" | "HEADING" | "CONTENT" | "COMPLETE" | "COMPLETE_CONTENT" | "MAIN" | "TABLE" | "THEME"
 
 const options: Options = {
     headingTexts: ["MUTUAL NONDISCLOSURE AGREEMENT", "CONFIDENTIAL INFORMATION.", "EXCLUSIONS.", "Choice of Law."],
@@ -445,25 +445,66 @@ function resolveBorderSides(opts: Options) {
 
 function openAndSaveDocx(
     inputPath: string,
-    action: (doc: Document) => void
+    action: (doc: Document, themeDoc?: Document, stylesDoc?: Document) => void
 ) {
     const zip = new PizZip(fs.readFileSync(inputPath));
 
+    // ---------------- document.xml ----------------
     let xml = zip.file("word/document.xml")!.asText();
-    xml = xml.replace(/\u2019/g, "'").replace(/[\u2018\u2019]/g, "'")
+    xml = xml
+        .replace(/\u2019/g, "'")
+        .replace(/[\u2018\u2019]/g, "'")
         .replace(/[\u201C\u201D]/g, '"');
 
     const doc = new DOMParser().parseFromString(xml, "text/xml");
 
-    // Run mode-specific logic
-    action(doc);
+    // ---------------- theme1.xml ----------------
+    let themeDoc: Document | undefined;
 
-    // Save result
+    const themeFile = zip.file("word/theme/theme1.xml");
+    if (themeFile) {
+        themeDoc = new DOMParser().parseFromString(
+            themeFile.asText(),
+            "text/xml"
+        );
+    }
+
+        // ---------------- style.xml ----------------
+    let stylesDoc: Document | undefined;
+
+    const styleFile = zip.file("word/styles.xml");
+    if (styleFile) {
+        stylesDoc = new DOMParser().parseFromString(
+            styleFile.asText(),
+            "text/xml"
+        );
+    }
+
+    // ---------------- Run caller logic ----------------
+    action(doc, themeDoc, stylesDoc);
+
+    // ---------------- Save document.xml ----------------
     zip.file(
         "word/document.xml",
         new XMLSerializer().serializeToString(doc)
     );
 
+    // ---------------- Save theme1.xml (always) ----------------
+    if (themeDoc) {
+        zip.file(
+            "word/theme/theme1.xml",
+            new XMLSerializer().serializeToString(themeDoc)
+        );
+    }
+
+    if (stylesDoc) {
+        zip.file(
+            "word/styles.xml",
+            new XMLSerializer().serializeToString(stylesDoc)
+        );
+    }
+
+    // ---------------- Write DOCX ----------------
     fs.writeFileSync(
         "output.docx",
         zip.generate({ type: "nodebuffer" }) as any
@@ -471,7 +512,6 @@ function openAndSaveDocx(
 
     console.log("File saved!");
 }
-
 
 
 function applyBorder(p: any, doc: any, opts: any): void {
@@ -1095,6 +1135,103 @@ function replaceUpdate(
     console.log("Content replaced!");
 }
 
+function unlockThemeColors(stylesDoc: Document): void {
+    const removeAttrs = ["w:fill", "w:color"];
+
+    const SAFE_THEME_KEYS = new Set([
+        "dk1",
+        "lt1",
+        "dk2",
+        "lt2",
+        "accent1",
+        "accent2",
+        "accent3",
+        "accent4",
+        "accent5",
+        "accent6",
+        "hlink",
+        "folHlink",
+    ]);
+
+    const DEFAULT_FILL = "accent1";
+    const DEFAULT_TEXT = "dk1";
+
+    const elements = stylesDoc.getElementsByTagName("*");
+
+    for (let i = 0; i < elements.length; i++) {
+        const el = elements[i] as Element;
+
+        const themeFill = el.getAttribute("w:themeFill");
+        const themeColor = el.getAttribute("w:themeColor");
+
+        // 1️⃣ Remove hard-coded overrides if theme attr present
+        if (themeFill || themeColor) {
+            removeAttrs.forEach(attr => {
+                if (el.hasAttribute(attr)) {
+                    el.removeAttribute(attr);
+                }
+            });
+        }
+
+        // 2️⃣ Fix invalid themeFill with safe default
+        if (themeFill && !SAFE_THEME_KEYS.has(themeFill)) {
+            el.setAttribute("w:themeFill", DEFAULT_FILL);
+        }
+
+        // 3️⃣ Fix invalid themeColor with safe default
+        if (themeColor && !SAFE_THEME_KEYS.has(themeColor)) {
+            el.setAttribute("w:themeColor", DEFAULT_TEXT);
+        }
+    }
+
+    console.log("Theme colors unlocked and normalized");
+}
+
+function updateThemeColors(
+    themeDoc: Document,
+    stylesDoc: Document,
+    options: any
+): void {
+    unlockThemeColors(stylesDoc);
+
+    function setSchemeColor(tag: string, hex: string) {
+        const el = themeDoc.getElementsByTagName(`a:${tag}`)[0];
+        if (!el) return;
+
+        // Remove all existing child color nodes (sysClr, srgbClr etc.)
+        const children = Array.from(el.childNodes);
+        for (const node of children) {
+            if (node.nodeType === 1) {
+                el.removeChild(node);
+            }
+        }
+
+        // Create a single srgbClr with new color
+        const clr = themeDoc.createElement("a:srgbClr");
+        clr.setAttribute("val", hex.toUpperCase());
+        el.appendChild(clr);
+    }
+
+    // Map backgrounds to dk1 (dark) and lt1 (light)
+    setSchemeColor("lt1", "FF0000"); // background1 (light)
+    setSchemeColor("dk1", "FF0000"); // background2 (dark, used in borders/fills)
+
+    // Accents (safe and used in shading/fills)
+    setSchemeColor("accent1", "FF0000");
+    setSchemeColor("accent2", "FF0000");
+    setSchemeColor("accent3", "FF0000");
+    setSchemeColor("accent4", "FF0000");
+
+    // Hyperlinks
+    setSchemeColor("hlink", "FF0000");
+    setSchemeColor("folHlink", "FF0000");
+
+    console.log("Theme colors updated");
+}
+
+
+
+
 
 // // ---------------- TITLE ----------------
 // if (mode === "TITLE") {
@@ -1158,7 +1295,7 @@ function processDocument(
     templatePath: string,
     options: Options
 ): void {
-    openAndSaveDocx(templatePath, (doc) => {
+    openAndSaveDocx(templatePath, (doc, themeDoc, stylesDoc) => {
         if (mode === "HEADING") {
             updateHeading(doc, options);
             return;
@@ -1186,6 +1323,11 @@ function processDocument(
 
         if (mode === "TABLE") {
             searchUpdateTable(doc, options);
+            return;
+        }
+
+        if(mode === "THEME") {
+            updateThemeColors(themeDoc!, stylesDoc!, options);
             return;
         }
     });
@@ -1517,6 +1659,6 @@ function tableContainsText(tbl: Element, text: string): boolean {
 //     });
 // }
 
-processDocument(mode, "./templates/Mutual NDA.docx", options)
+processDocument(mode, "./final_result_1.docx", options)
 // fs.writeFileSync("output.docx", zip.generate({ type: "nodebuffer" }) as any);
 // console.log("File saved!");
