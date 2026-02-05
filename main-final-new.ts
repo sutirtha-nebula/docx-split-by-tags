@@ -43,7 +43,7 @@ interface Options {
     tableTargets?: TableTarget[];
 }
 
-const mode: any = "CONTENT"; // "TITLE" | "HEADING" | "CONTENT" | "COMPLETE" | "COMPLETE_CONTENT" | "MAIN" | "TABLE"
+const mode: any = "TABLE"; // "TITLE" | "HEADING" | "CONTENT" | "COMPLETE" | "COMPLETE_CONTENT" | "MAIN" | "TABLE"
 
 const options: Options = {
     headingTexts: ["MUTUAL NONDISCLOSURE AGREEMENT", "CONFIDENTIAL INFORMATION.", "EXCLUSIONS.", "Choice of Law."],
@@ -67,7 +67,7 @@ const options: Options = {
     alignment: 'right',
     lineHeight: 2,
     verticalAlign: "bottom",
-    // rowHeight: 2,
+    rowHeight: 5000, // twips = px * 15
     tableTargets: [
         // {
         //     tableIndex: 0,
@@ -84,7 +84,7 @@ const options: Options = {
         //     headerRule: "firstRow"
         // },
         {
-                tableIndex: 1,
+                tableIndex: -1,
                 header: false,
                 content: true,
                 footer: false,
@@ -1359,6 +1359,28 @@ function applyStyleToTable(
     });
 }
 
+function applyRowHeightToRow(tr: Element, doc: Document, height: number) {
+    if (!height) return;
+
+    // Get or create <w:trPr>
+    let trPr = tr.getElementsByTagName("w:trPr")[0];
+    if (!trPr) {
+        trPr = doc.createElement("w:trPr");
+        tr.insertBefore(trPr, tr.firstChild);
+    }
+
+    // Remove existing height (avoid duplicates)
+    const old = trPr.getElementsByTagName("w:trHeight")[0];
+    if (old) trPr.removeChild(old);
+
+    // Create new height node
+    const trHeight = doc.createElement("w:trHeight");
+    trHeight.setAttribute("w:val", String(height));   // height in pixel
+    trHeight.setAttribute("w:hRule", "atLeast");      // or "exact"
+
+    trPr.appendChild(trHeight);
+}
+
 function applyStyleToTableRow(tr: Element, doc: Document, opts: Options) {
     let trPr = tr.getElementsByTagName("w:trPr")[0] as Element | undefined;
 
@@ -1367,13 +1389,14 @@ function applyStyleToTableRow(tr: Element, doc: Document, opts: Options) {
         tr.insertBefore(trPr, tr.firstChild);
     }
 
-    if (opts.rowHeight) {
+    if (opts?.rowHeight) {
         let h = trPr.getElementsByTagName("w:trHeight")[0] as Element | undefined;
         if (!h) {
             h = doc.createElement("w:trHeight");
             trPr.appendChild(h);
         }
         h.setAttribute("w:val", opts.rowHeight.toString());
+        applyRowHeightToRow(tr, doc, opts.rowHeight);
     }
 
     const cells = Array.from(tr.getElementsByTagName("w:tc"));
@@ -1520,6 +1543,6 @@ function tableContainsText(tbl: Element, text: string): boolean {
 //     });
 // }
 
-processDocument(mode, "./templates/book.docx", options)
+processDocument(mode, "./final_result_1.docx", options)
 // fs.writeFileSync("output.docx", zip.generate({ type: "nodebuffer" }) as any);
 // console.log("File saved!");
