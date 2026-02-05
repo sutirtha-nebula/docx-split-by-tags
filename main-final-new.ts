@@ -368,10 +368,10 @@ function applyStyleToRuns(runs: any[], doc: any, opts: any): void {
             // Remove existing jc (important!)
             removeChildren(pPr, "w:jc");
 
-            const pStyleNodes = pPr.getElementsByTagName("w:pStyle");
-            if (pStyleNodes && pStyleNodes.length > 0) {
-                pPr.removeChild(pStyleNodes[0]);
-            }
+            // const pStyleNodes = pPr.getElementsByTagName("w:pStyle");
+            // if (pStyleNodes && pStyleNodes.length > 0) {
+            //     pPr.removeChild(pStyleNodes[0]);
+            // }
 
             const jc = doc.createElement("w:jc");
 
@@ -1289,6 +1289,9 @@ function resolveTableTargets(
     if (!opts.tableTargets || opts.tableTargets.length === 0) return [];
 
     return opts.tableTargets.filter((t) => {
+        if(t.tableIndex === -1){
+            return true;
+        }
         if (t.tableIndex !== undefined) {
             return t.tableIndex === index;
         }
@@ -1517,6 +1520,6 @@ function tableContainsText(tbl: Element, text: string): boolean {
 //     });
 // }
 
-processDocument(mode, "./templates/Mutual NDA.docx", options)
+processDocument(mode, "./templates/book.docx", options)
 // fs.writeFileSync("output.docx", zip.generate({ type: "nodebuffer" }) as any);
 // console.log("File saved!");
