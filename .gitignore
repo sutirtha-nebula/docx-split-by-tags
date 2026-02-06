@@ -1,2 +1,4 @@
 /node_modules
 .env
+/nodes*
+/flow_output
